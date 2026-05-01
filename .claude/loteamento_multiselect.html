@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Loteamento — Editor Manual</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;--s1:#0f1420;--s2:#161d2e;--s3:#1e2840;
+  --bd:rgba(99,130,201,.12);--bd2:rgba(99,130,201,.22);
+  --tx:#d8e4ff;--mu:#5a7299;--mu2:#7a98cc;
+  --ac:#4f9cf9;--ac2:#82b8ff;
+  --gn:#22c55e;--gna:rgba(34,197,94,.38);--gnh:rgba(34,197,94,.62);--gns:rgba(34,197,94,.1);
+  --rd:#ef4444;--rda:rgba(239,68,68,.38);--rdh:rgba(239,68,68,.62);--rds:rgba(239,68,68,.1);
+  --yw:#f59e0b;--ywa:rgba(245,158,11,.38);--ywh:rgba(245,158,11,.62);--yws:rgba(245,158,11,.1);
+  --tb:52px;--sb:316px;
+  --font:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--bg);color:var(--tx)}
+
+/* ─── TOOLBAR ──────────────────────────────────────── */
+#tb{
+  position:fixed;top:0;left:0;right:0;height:var(--tb);z-index:300;
+  background:rgba(8,12,20,.97);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:4px;padding:0 13px;
+}
+#tb h1{font-size:13px;font-weight:700;letter-spacing:.06em;white-space:nowrap;margin-right:6px}
+#tb h1 span{color:var(--ac)}
+.sep{width:1px;height:25px;background:var(--bd);margin:0 3px;flex-shrink:0}
+.tbtn{
+  display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:7px;
+  border:1px solid var(--bd2);background:var(--s2);color:var(--mu2);
+  font-size:11px;font-weight:600;cursor:pointer;transition:all .14s;
+  white-space:nowrap;font-family:var(--font);letter-spacing:.03em;
+}
+.tbtn:hover{background:var(--s3);color:var(--tx);border-color:rgba(99,130,201,.35)}
+.tbtn.on{background:rgba(79,156,249,.15);color:var(--ac);border-color:rgba(79,156,249,.45)}
+.tbtn.ok{border-color:rgba(34,197,94,.35);color:#4ade80}
+.tbtn.ok:hover{background:rgba(34,197,94,.1)}
+.tbtn.danger{border-color:rgba(239,68,68,.35);color:#f87171}
+.tbtn.danger:hover{background:rgba(239,68,68,.1)}
+#hint{
+  margin-left:auto;font-size:10px;color:var(--mu);background:var(--s2);
+  border:1px solid var(--bd);padding:4px 12px;border-radius:99px;
+  white-space:nowrap;flex-shrink:0;letter-spacing:.03em;
+}
+
+/* ─── MAP ──────────────────────────────────────────── */
+#mw{position:fixed;top:var(--tb);left:0;bottom:0;right:var(--sb);overflow:auto;background:#050810}
+#canvas{position:relative;user-select:none}
+#bgimg{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;object-fit:fill}
+#gridovl{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 49px,rgba(79,156,249,.025) 50px),
+    repeating-linear-gradient(90deg,transparent,transparent 49px,rgba(79,156,249,.025) 50px);
+}
+#svg{position:absolute;inset:0;overflow:visible}
+#mw.c-draw{cursor:crosshair}
+#mw.c-edit{cursor:default}
+#mw.c-view{cursor:default}
+
+/* Selection box */
+#selbox{
+  position:absolute;pointer-events:none;z-index:60;
+  border:1.5px dashed rgba(79,156,249,.8);
+  background:rgba(79,156,249,.06);
+  border-radius:2px;display:none;
+}
+
+/* Drop zone */
+#dz{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:15px;background:rgba(5,8,16,.94);z-index:5;
+}
+#dz.gone{display:none}
+#dz svg{opacity:.18}
+#dz-t{font-size:15px;font-weight:600;color:var(--mu2)}
+#dz p{font-size:11px;color:var(--mu);text-align:center;line-height:2;max-width:240px}
+
+/* ─── SIDEBAR ──────────────────────────────────────── */
+#sb{
+  position:fixed;top:var(--tb);right:0;bottom:0;width:var(--sb);
+  background:var(--s1);border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sbh{
+  padding:13px 16px 11px;border-bottom:1px solid var(--bd);
+  font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sbh-c{font-size:10px;color:var(--mu);font-weight:400;text-transform:none;letter-spacing:0}
+.sbb{flex:1;overflow-y:auto;padding:13px 14px}
+.sbb::-webkit-scrollbar{width:3px}
+.sbb::-webkit-scrollbar-thumb{background:rgba(79,156,249,.15);border-radius:3px}
+
+/* Form elements */
+.fg{margin-bottom:11px}
+.fl{font-size:10px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.09em;display:block;margin-bottom:4px}
+.fi{
+  width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--bd2);
+  border-radius:7px;color:var(--tx);font-size:13px;font-family:var(--font);outline:none;transition:border-color .14s;
+}
+.fi:focus{border-color:var(--ac);background:var(--s3)}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+
+/* Status pills */
+.spw{display:flex;gap:5px}
+.sp{flex:1;padding:7px 0;border-radius:6px;border:2px solid transparent;text-align:center;
+  font-size:10px;font-weight:700;cursor:pointer;transition:all .14s;letter-spacing:.04em}
+.sp.d{background:var(--gns);color:#4ade80;border-color:rgba(34,197,94,.2)}
+.sp.d.on{border-color:var(--gn);background:rgba(34,197,94,.22)}
+.sp.v{background:var(--rds);color:#f87171;border-color:rgba(239,68,68,.2)}
+.sp.v.on{border-color:var(--rd);background:rgba(239,68,68,.22)}
+.sp.r{background:var(--yws);color:#fde047;border-color:rgba(245,158,11,.2)}
+.sp.r.on{border-color:var(--yw);background:rgba(245,158,11,.22)}
+
+/* Buttons */
+.btn{padding:9px;border-radius:7px;border:none;width:100%;font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .14s;font-family:var(--font);
+  display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-p{background:var(--ac);color:#050810}
+.btn-p:hover{background:var(--ac2)}
+.btn-d{background:rgba(239,68,68,.14);color:#f87171;border:1px solid rgba(239,68,68,.28)}
+.btn-d:hover{background:rgba(239,68,68,.25)}
+.btn-g{background:var(--s2);color:var(--mu2);border:1px solid var(--bd2)}
+.btn-g:hover{color:var(--tx);background:var(--s3)}
+.br2{display:flex;gap:8px}.br2 .btn{flex:1}
+
+/* Divider, section label */
+.div{border:none;border-top:1px solid var(--bd);margin:11px 0}
+.slbl{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.hbox{background:rgba(79,156,249,.07);border:1px solid rgba(79,156,249,.2);border-radius:7px;
+  padding:9px 12px;font-size:11px;color:var(--ac);line-height:1.7;margin-bottom:12px}
+
+/* Multi-select panel */
+.msel-box{
+  background:rgba(79,156,249,.08);border:1px solid rgba(79,156,249,.3);
+  border-radius:9px;padding:13px 14px;margin-bottom:12px;
+}
+.msel-title{font-size:11px;font-weight:700;color:var(--ac);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.msel-count{
+  background:var(--ac);color:#050810;border-radius:99px;
+  padding:2px 8px;font-size:10px;font-weight:700;
+}
+.msel-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+
+/* Lot list */
+.qi{border-radius:8px;border:1px solid var(--bd);background:var(--s2);margin-bottom:7px;overflow:hidden}
+.qi-h{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;transition:background .14s}
+.qi-h:hover{background:var(--s3)}
+.qdot{width:9px;height:9px;border-radius:2px;background:var(--ac);flex-shrink:0}
+.qi-i{flex:1;min-width:0}
+.qi-t{font-size:12px;font-weight:700}
+.qi-s{font-size:10px;color:var(--mu);margin-top:2px}
+.llw{border-top:1px solid var(--bd);padding:5px 11px;display:none}
+.llw.open{display:block}
+.ll{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;cursor:pointer;transition:background .14s}
+.ll:hover{background:var(--s3)}
+.ll.on{background:rgba(79,156,249,.1)}
+.ll.msel-on{background:rgba(79,156,249,.18);outline:1px solid rgba(79,156,249,.4)}
+.ll-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.ll-dot.disponivel{background:var(--gn)}
+.ll-dot.vendido{background:var(--rd)}
+.ll-dot.reservado{background:var(--yw)}
+.ll-l{flex:1;font-size:11px;font-weight:600}
+.ll-s{font-size:10px;color:var(--mu)}
+
+/* Stats */
+#stats{display:flex;gap:5px;padding:10px 14px;border-top:1px solid var(--bd)}
+.st{flex:1;text-align:center;padding:6px 3px;border-radius:6px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.st.d{background:var(--gns);color:#4ade80}
+.st.v{background:var(--rds);color:#f87171}
+.st.r{background:var(--yws);color:#fde047}
+.st-n{display:block;font-size:17px;font-family:var(--mono);font-weight:700;margin-bottom:1px}
+
+/* Empty */
+.empty{text-align:center;padding:36px 14px;color:var(--mu)}
+.empty svg{margin-bottom:12px;opacity:.18}
+.empty p{font-size:11px;line-height:2}
+
+/* Modal */
+#mbg{
+  position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.72);
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px);
+}
+#mbg.vis{display:flex}
+#modal{
+  background:var(--s1);border:1px solid var(--bd2);border-radius:16px;
+  padding:26px 28px;width:480px;max-width:93vw;
+  box-shadow:0 50px 100px rgba(0,0,0,.9);
+}
+#modal h2{font-size:15px;font-weight:700;margin-bottom:14px}
+.mhint{background:rgba(79,156,249,.07);border:1px solid rgba(79,156,249,.2);
+  border-radius:8px;padding:10px 13px;font-size:11px;color:var(--ac);
+  line-height:1.8;margin-bottom:14px}
+.radio-row{display:flex;gap:14px;align-items:center}
+.radio-row label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--mu2);cursor:pointer}
+.radio-row input[type=radio]{accent-color:var(--ac)}
+.mac{display:flex;gap:9px;margin-top:18px}.mac .btn{flex:1}
+
+/* Popup */
+#popup{
+  position:fixed;z-index:500;min-width:230px;
+  background:rgba(8,12,20,.97);border:1px solid rgba(79,156,249,.25);border-radius:14px;
+  padding:16px 18px;backdrop-filter:blur(24px);
+  box-shadow:0 24px 70px rgba(0,0,0,.85);
+  opacity:0;transform:translateY(8px) scale(.96);transition:opacity .17s,transform .17s;
+  pointer-events:none;display:none;
+}
+#popup.vis{opacity:1;transform:none;pointer-events:auto;display:block}
+#px{position:absolute;top:11px;right:13px;background:none;border:none;color:var(--mu);cursor:pointer;font-size:15px}
+.pbg{display:inline-block;padding:3px 12px;border-radius:99px;font-size:10px;
+  font-weight:700;letter-spacing:.11em;text-transform:uppercase;margin-bottom:12px}
+.pbg.disponivel{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.pbg.vendido{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+.pbg.reservado{background:rgba(245,158,11,.15);color:#fde047;border:1px solid rgba(245,158,11,.3)}
+.pop-t{font-size:16px;font-weight:700;margin-bottom:12px}
+.pop-r{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--bd);padding:7px 0}
+.pop-r:last-child{border:none}
+.pop-l{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em}
+.pop-v{font-size:13px;font-weight:700;font-family:var(--mono)}
+.pop-v.ac{color:var(--ac)}
+.pop-v.gn{color:#4ade80}
+.pop-v.rd{color:#f87171}
+.pop-v.yw{color:#fde047}
+
+/* Scale mode */
+#btn-escala.measuring{background:rgba(245,158,11,.15);color:#fde047;border-color:rgba(245,158,11,.5);}
+.sc-dot{position:absolute;width:12px;height:12px;background:#f59e0b;border:2px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:50}
+.sc-line{position:absolute;background:rgba(245,158,11,.7);height:2px;transform-origin:left center;pointer-events:none;z-index:50}
+
+/* Notif */
+#notif{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  padding:9px 24px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.04em;
+  opacity:0;transition:opacity .25s;pointer-events:none;z-index:600;white-space:nowrap;
+}
+#notif.vis{opacity:1}
+#notif.ok{background:rgba(34,197,94,.94);color:#050810}
+#notif.err{background:rgba(239,68,68,.94);color:#fff}
+#notif.inf{background:rgba(79,156,249,.94);color:#050810}
+
+/* Multi-select rotation handle (orange) */
+.msel-rotate-line{position:absolute;background:rgba(251,146,60,.6);height:2px;transform-origin:left center;pointer-events:none;z-index:54}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOOLBAR ════════════════════════════════════════════ -->
+<div id="tb">
+  <h1>Loteamento <span>Pro</span></h1>
+  <div class="sep"></div>
+  <button class="tbtn" id="btn-criar" onclick="setMode('create')" title="Clique na imagem para posicionar um lote">＋ Novo Lote</button>
+  <button class="tbtn" onclick="abrirModalBulk()" title="Criar vários lotes alinhados automaticamente">⊞ Criar Vários</button>
+  <div class="sep"></div>
+  <button class="tbtn" id="btn-e" onclick="setMode('edit')">✎ Editar</button>
+  <button class="tbtn on" id="btn-v" onclick="setMode('view')">👁 Visualizar</button>
+  <div class="sep"></div>
+  <label class="tbtn" style="cursor:pointer" title="Carregar imagem de fundo">
+    🖼 Imagem
+    <input type="file" id="fup" accept="image/*" style="display:none" onchange="uploadImg(this)"/>
+  </label>
+  <div class="sep"></div>
+  <button class="tbtn" id="btn-escala" onclick="abrirModalEscala()" title="Calibrar escala pixel/metro">📐 Escala</button>
+  <div class="sep"></div>
+  <button class="tbtn ok"     onclick="expJSON()">⬇ JSON</button>
+  <button class="tbtn ok"     onclick="expHTML()">⬇ HTML</button>
+  <button class="tbtn danger" onclick="limparTudo()">🗑 Limpar</button>
+  <div id="hint">Clique num lote para ver os detalhes</div>
+  <span id="sc-badge" style="font-size:10px;color:#fde047;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);padding:3px 9px;border-radius:99px;margin-left:4px;display:none;white-space:nowrap">📐 <span id="sc-badge-val">—</span> px/m</span>
+</div>
+
+<!-- ═══ MAP ════════════════════════════════════════════════ -->
+<div id="mw" class="c-view">
+  <div id="canvas">
+    <img id="bgimg" src="" alt=""/>
+    <div id="gridovl"></div>
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="selbox"></div>
+    <div id="dz">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#4f9cf9" stroke-width="1.2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+      </svg>
+      <div id="dz-t">Sem imagem de fundo</div>
+      <p>Clique em <strong style="color:var(--mu2)">🖼 Imagem</strong><br>para carregar o mapa do loteamento</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SIDEBAR ════════════════════════════════════════════ -->
+<div id="sb">
+  <div class="sbh"><span id="sbt">Lotes</span><span class="sbh-c" id="sbc"></span></div>
+  <div class="sbb" id="sbb"></div>
+  <div id="stats">
+    <div class="st d"><span class="st-n" id="cntd">0</span>Dispon.</div>
+    <div class="st v"><span class="st-n" id="cntv">0</span>Vendidos</div>
+    <div class="st r"><span class="st-n" id="cntr">0</span>Reserv.</div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: CRIAR VÁRIOS ════════════════════════════════ -->
+<div id="mbg">
+  <div id="modal">
+    <h2>⊞ Criar Vários Lotes</h2>
+    <div class="mhint">Os lotes serão criados alinhados, sem sobreposição, a partir da posição inicial.</div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Quadra</label>
+        <input class="fi" id="b-q" type="number" min="1" value="1"/></div>
+      <div class="fg"><label class="fl">Nº Inicial</label>
+        <input class="fi" id="b-ni" type="number" min="1" value="1"/></div>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Quantidade</label>
+        <input class="fi" id="b-qt" type="number" min="1" value="10"/></div>
+      <div class="fg"><label class="fl">Tamanho (m²)</label>
+        <input class="fi" id="b-tam" type="number" min="1" value="200"/></div>
+    </div>
+    <div id="bulk-px-row" class="fr2">
+      <div class="fg"><label class="fl">Largura (px)</label>
+        <input class="fi" id="b-larg" type="number" min="10" value="80" oninput="bulkSincPx('b-larg','b-larg-m')"/></div>
+      <div class="fg"><label class="fl">Altura (px)</label>
+        <input class="fi" id="b-alt" type="number" min="10" value="55" oninput="bulkSincPx('b-alt','b-alt-m')"/></div>
+    </div>
+    <div id="bulk-m-row" class="fr2" style="display:none">
+      <div class="fg"><label class="fl" style="color:#fde047">↔ Largura (m)</label>
+        <input class="fi" id="b-larg-m" type="number" min="0.1" step="0.1" placeholder="metros" oninput="bulkSincMetros('b-larg-m','b-larg')" style="border-color:rgba(245,158,11,.4)"/></div>
+      <div class="fg"><label class="fl" style="color:#fde047">↕ Altura (m)</label>
+        <input class="fi" id="b-alt-m" type="number" min="0.1" step="0.1" placeholder="metros" oninput="bulkSincMetros('b-alt-m','b-alt')" style="border-color:rgba(245,158,11,.4)"/></div>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Posição X inicial</label>
+        <input class="fi" id="b-x" type="number" value="100"/></div>
+      <div class="fg"><label class="fl">Posição Y inicial</label>
+        <input class="fi" id="b-y" type="number" value="100"/></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Preço por Lote (R$)</label>
+      <input class="fi" id="b-preco" type="number" min="0" value="0" placeholder="0"/></div>
+    <div class="fg">
+      <label class="fl">Status Padrão</label>
+      <div class="spw">
+        <div class="sp d on" id="bsp-d" onclick="mSp(this,'disponivel')">Disponível</div>
+        <div class="sp v"    id="bsp-v" onclick="mSp(this,'vendido')">Vendido</div>
+        <div class="sp r"    id="bsp-r" onclick="mSp(this,'reservado')">Reservado</div>
+      </div>
+      <input type="hidden" id="b-status" value="disponivel"/>
+    </div>
+    <div class="fg">
+      <label class="fl">Direção de criação</label>
+      <div class="radio-row">
+        <label><input type="radio" name="dir" value="H" checked/> ➡ Horizontal (linha)</label>
+        <label><input type="radio" name="dir" value="V"/> ⬇ Vertical (coluna)</label>
+      </div>
+    </div>
+    <div class="mac">
+      <button class="btn btn-p" onclick="confirmarBulk()">⚡ Criar Lotes</button>
+      <button class="btn btn-d" onclick="cancelModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ POPUP ══════════════════════════════════════════════ -->
+<div id="popup">
+  <button id="px">✕</button>
+  <div id="pop-badge" class="pbg disponivel">Disponível</div>
+  <div class="pop-t" id="pop-title"></div>
+  <div class="pop-r"><span class="pop-l">Quadra</span><span class="pop-v" id="pop-q"></span></div>
+  <div class="pop-r"><span class="pop-l">Tamanho</span><span class="pop-v" id="pop-tam"></span></div>
+  <div class="pop-r"><span class="pop-l">Preço</span><span class="pop-v ac" id="pop-preco"></span></div>
+  <div class="pop-r"><span class="pop-l">Status</span><span class="pop-v" id="pop-status"></span></div>
+</div>
+<div id="notif"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════
+//  ESCALA PIXEL / METRO
+// ════════════════════════════════════════════════════════════════
+let escalaPxM = 0;
+let scaleMeds = [];
+let scaleMode = false;
+let scalePt1  = null;
+let scaleElems = [];
+let _rubberLineEl = null, _rubberLabelEl = null;
+
+function _scAdd(el){ document.getElementById('canvas').appendChild(el); scaleElems.push(el); return el; }
+function _scRem(){ scaleElems.forEach(e=>{try{e.parentNode&&e.parentNode.removeChild(e);}catch(_){}}); scaleElems=[]; }
+function _scDot(x,y,color='#f59e0b'){
+  const d=document.createElement('div');
+  Object.assign(d.style,{position:'absolute',width:'14px',height:'14px',background:color,
+    border:'3px solid #fff',borderRadius:'50%',transform:'translate(-50%,-50%)',
+    left:x+'px',top:y+'px',pointerEvents:'none',zIndex:'55',boxShadow:'0 2px 8px rgba(0,0,0,.5)'});
+  return _scAdd(d);
+}
+function _scLine(x1,y1,x2,y2){
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)*180/Math.PI;
+  const l=document.createElement('div');
+  Object.assign(l.style,{position:'absolute',height:'2px',background:'rgba(245,158,11,.85)',
+    left:x1+'px',top:y1+'px',width:len+'px',transformOrigin:'left center',
+    transform:`rotate(${ang}deg)`,pointerEvents:'none',zIndex:'54'});
+  return _scAdd(l);
+}
+function _removeRubber(){
+  if(_rubberLineEl){try{_rubberLineEl.parentNode&&_rubberLineEl.parentNode.removeChild(_rubberLineEl);}catch(_){} _rubberLineEl=null;}
+  if(_rubberLabelEl){try{_rubberLabelEl.parentNode&&_rubberLabelEl.parentNode.removeChild(_rubberLabelEl);}catch(_){} _rubberLabelEl=null;}
+}
+function _overlay(msg){
+  let ov=document.getElementById('sc-overlay');
+  if(!ov){ov=document.createElement('div');ov.id='sc-overlay';
+    Object.assign(ov.style,{position:'fixed',bottom:'28px',left:'50%',transform:'translateX(-50%)',
+      background:'rgba(245,158,11,.92)',color:'#050810',padding:'9px 24px',borderRadius:'99px',
+      fontSize:'12px',fontWeight:'800',zIndex:'800',pointerEvents:'none',whiteSpace:'nowrap',
+      boxShadow:'0 4px 20px rgba(0,0,0,.7)',letterSpacing:'.04em'});
+    document.body.appendChild(ov);}
+  ov.textContent=msg; ov.style.display='block';
+}
+function _overlayHide(){ const ov=document.getElementById('sc-overlay'); if(ov) ov.style.display='none'; }
+function _miniDialog(px,x,y){
+  let md=document.getElementById('sc-minidlg'); if(md) md.remove();
+  md=document.createElement('div'); md.id='sc-minidlg';
+  Object.assign(md.style,{position:'absolute',left:x+'px',top:y+'px',
+    background:'var(--s1)',border:'1px solid rgba(245,158,11,.6)',borderRadius:'12px',
+    padding:'14px 16px',zIndex:'900',boxShadow:'0 8px 32px rgba(0,0,0,.8)',
+    minWidth:'240px',transform:'translate(-50%,-115%)'});
+  md.innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:#fde047;margin-bottom:8px;letter-spacing:.06em">📐 CALIBRAR ESCALA</div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:10px">Linha medida: <b style="color:var(--tx)">${px.toFixed(1)} px</b></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <input id="sc-mini-m" type="number" min="0.1" step="0.1" placeholder="ex: 40"
+        style="flex:1;padding:8px 10px;background:var(--s2);border:1px solid rgba(245,158,11,.5);border-radius:7px;color:var(--tx);font-size:14px;font-weight:700;outline:none;width:80px"
+        onkeydown="if(event.key==='Enter')_miniConfirm(${px})"/>
+      <span style="font-size:12px;color:var(--mu);white-space:nowrap">metros</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="_miniConfirm(${px})"
+        style="flex:1;padding:8px;background:var(--ac);color:#050810;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">✓ Confirmar</button>
+      <button onclick="_miniCancel()"
+        style="padding:8px 12px;background:var(--s2);color:var(--mu2);border:1px solid var(--bd2);border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+    </div>`;
+  document.getElementById('canvas').appendChild(md);
+  setTimeout(()=>{ const inp=document.getElementById('sc-mini-m'); if(inp) inp.focus(); },50);
+}
+function _miniConfirm(px){
+  const m=parseFloat(document.getElementById('sc-mini-m')?.value);
+  if(!m||m<=0){notif('Informe a distância em metros','err');return;}
+  scaleMeds.push({px,m}); _miniClose(); _scRem(); scalePt1=null; scaleMode=false;
+  document.getElementById('mw').style.cursor='default'; _overlayHide();
+  atualizarEscalaBadge(); salvarEscalaStorage();
+  notif(`✓ Escala: ${escalaPxM.toFixed(2)} px/m`, 'ok');
+}
+function _miniCancel(){ _miniClose(); _scRem(); scalePt1=null; scaleMode=false; document.getElementById('mw').style.cursor='default'; _overlayHide(); }
+function _miniClose(){ const md=document.getElementById('sc-minidlg'); if(md) md.remove(); }
+document.addEventListener('mousemove', e=>{
+  if(!scaleMode||!scalePt1) return;
+  const r=document.getElementById('canvas').getBoundingClientRect();
+  const mw=document.getElementById('mw');
+  const cx=e.clientX-r.left+mw.scrollLeft, cy=e.clientY-r.top+mw.scrollTop;
+  const dx=cx-scalePt1.x, dy=cy-scalePt1.y, dist=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI;
+  if(!_rubberLineEl){
+    _rubberLineEl=document.createElement('div');
+    Object.assign(_rubberLineEl.style,{position:'absolute',height:'2px',background:'rgba(245,158,11,.7)',transformOrigin:'left center',pointerEvents:'none',zIndex:'54',borderRadius:'1px'});
+    document.getElementById('canvas').appendChild(_rubberLineEl);
+  }
+  Object.assign(_rubberLineEl.style,{left:scalePt1.x+'px',top:scalePt1.y+'px',width:dist+'px',transform:`rotate(${ang}deg)`});
+  if(!_rubberLabelEl){
+    _rubberLabelEl=document.createElement('div');
+    Object.assign(_rubberLabelEl.style,{position:'absolute',background:'rgba(8,12,20,.85)',border:'1px solid rgba(245,158,11,.4)',color:'#fde047',padding:'3px 10px',borderRadius:'99px',fontSize:'10px',fontWeight:'700',pointerEvents:'none',zIndex:'56',whiteSpace:'nowrap',transform:'translate(-50%,-50%)'});
+    document.getElementById('canvas').appendChild(_rubberLabelEl);
+  }
+  const mx=scalePt1.x+dx/2, my=scalePt1.y+dy/2;
+  _rubberLabelEl.style.left=mx+'px'; _rubberLabelEl.style.top=my+'px'; _rubberLabelEl.textContent=dist.toFixed(0)+'px';
+});
+function abrirModalEscala(){
+  if(scaleMode){ _miniCancel(); notif('Medição cancelada','inf'); return; }
+  let cd=document.getElementById('sc-confirmdlg'); if(cd) cd.remove();
+  cd=document.createElement('div'); cd.id='sc-confirmdlg';
+  const temEscala=escalaPxM>0;
+  Object.assign(cd.style,{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+    background:'var(--s1)',border:'1px solid var(--bd2)',borderRadius:'16px',
+    padding:'26px 28px',width:'440px',maxWidth:'93vw',zIndex:'900',boxShadow:'0 50px 100px rgba(0,0,0,.9)'});
+  const medsHtml=scaleMeds.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">Medidas registradas</div>
+      ${scaleMeds.map((r,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:var(--s2);margin-bottom:3px;font-size:11px">
+        <span style="color:var(--mu)">Par ${i+1}:</span>
+        <span style="font-family:var(--mono);color:var(--tx)">${r.px.toFixed(1)}px</span>
+        <span style="color:var(--mu)">→</span>
+        <span style="font-family:var(--mono);color:var(--tx)">${r.m}m</span>
+        <span style="color:var(--ac)">= ${(r.px/r.m).toFixed(2)} px/m</span>
+        <button onclick="removerMedidaDlg(${i})" style="margin-left:auto;background:none;border:none;color:var(--rd);cursor:pointer;font-size:12px;padding:0">✕</button>
+      </div>`).join('')}
+      <div style="margin-top:8px;padding:8px 12px;background:rgba(79,156,249,.07);border:1px solid rgba(79,156,249,.2);border-radius:7px;font-size:12px;color:var(--ac)">
+        Escala atual: <b style="font-family:var(--mono)">${escalaPxM.toFixed(2)}</b> px/m
+      </div>
+    </div>`:'';
+  cd.innerHTML=`
+    <h2 style="font-size:15px;font-weight:700;margin-bottom:10px">📐 Calibrar Escala</h2>
+    <div style="font-size:11px;color:var(--mu);line-height:1.8;margin-bottom:14px;background:rgba(79,156,249,.07);border:1px solid rgba(79,156,249,.2);border-radius:8px;padding:10px 13px">
+      Após fechar, clique em <b style="color:var(--ac)">2 pontos</b> no mapa cujo comprimento real você conhece.
+    </div>
+    ${medsHtml}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="iniciarMedicao()" style="flex:1;padding:10px;background:var(--ac);color:#050810;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">
+        📏 ${temEscala?'Adicionar nova medida':'Iniciar medição'}
+      </button>
+      ${temEscala?`<button onclick="limparEscala()" style="padding:10px 14px;background:rgba(239,68,68,.14);color:#f87171;border:1px solid rgba(239,68,68,.28);border-radius:7px;font-size:12px;cursor:pointer">🗑 Resetar</button>`:''}
+      <button onclick="document.getElementById('sc-confirmdlg').remove()" style="padding:10px 14px;background:var(--s2);color:var(--mu2);border:1px solid var(--bd2);border-radius:7px;font-size:12px;cursor:pointer">Fechar</button>
+    </div>`;
+  document.body.appendChild(cd);
+}
+function removerMedidaDlg(i){ scaleMeds.splice(i,1); atualizarEscalaBadge(); salvarEscalaStorage(); const cd=document.getElementById('sc-confirmdlg'); if(cd) cd.remove(); abrirModalEscala(); }
+function iniciarMedicao(){ const cd=document.getElementById('sc-confirmdlg'); if(cd) cd.remove(); scaleMode=true; scalePt1=null; _scRem(); _removeRubber(); document.getElementById('mw').style.cursor='crosshair'; _overlay('📍 Clique no 1º ponto da linha'); }
+function limparEscala(){ scaleMeds=[]; scaleMode=false; scalePt1=null; _scRem(); _removeRubber(); _miniClose(); document.getElementById('mw').style.cursor='default'; _overlayHide(); atualizarEscalaBadge(); salvarEscalaStorage(); const cd=document.getElementById('sc-confirmdlg'); if(cd) cd.remove(); notif('Escala resetada','ok'); }
+function atualizarEscalaBadge(){
+  if(scaleMeds.length){ const soma=scaleMeds.reduce((s,r)=>s+(r.px/r.m),0); escalaPxM=soma/scaleMeds.length; }
+  else { escalaPxM=0; }
+  const b=document.getElementById('sc-badge'), bv=document.getElementById('sc-badge-val');
+  if(escalaPxM>0){if(b){b.style.display='inline-block'; if(bv) bv.textContent=escalaPxM.toFixed(2);}}
+  else {if(b) b.style.display='none';}
+  atualizarBulkModal();
+}
+function handleScaleClick(e){
+  if(!scaleMode) return;
+  const pt=svgPt(e);
+  if(!scalePt1){ scalePt1=pt; _scDot(pt.x,pt.y); _overlay('📍 Clique no 2º ponto da linha'); }
+  else {
+    const dx=pt.x-scalePt1.x, dy=pt.y-scalePt1.y, dist=Math.hypot(dx,dy);
+    _removeRubber(); _scDot(pt.x,pt.y,'#ef4444'); _scLine(scalePt1.x,scalePt1.y,pt.x,pt.y); _overlayHide();
+    scaleMode=false; document.getElementById('mw').style.cursor='default';
+    const mx=scalePt1.x+dx/2, my=scalePt1.y+dy/2; _miniDialog(dist,mx,my);
+  }
+}
+function salvarEscalaStorage(){ try{localStorage.setItem('lot_scale_v1',JSON.stringify(scaleMeds));}catch(e){} }
+function carregarEscalaStorage(){ try{const s=localStorage.getItem('lot_scale_v1'); if(s){scaleMeds=JSON.parse(s);atualizarEscalaBadge();}}catch(e){} }
+function sincMetros(idPx,idM){
+  if(!escalaPxM) return;
+  const el=document.getElementById(idM), pxEl=document.getElementById(idPx);
+  if(el&&pxEl) el.value=(+(parseFloat(pxEl.value)||0)/escalaPxM).toFixed(2);
+}
+function liveUpdMetros(id,prop,idM,idPx){
+  if(!escalaPxM) return;
+  const m=parseFloat(document.getElementById(idM)?.value)||0, px=Math.round(m*escalaPxM);
+  if(px<1) return;
+  const pxEl=document.getElementById(idPx); if(pxEl) pxEl.value=px;
+  liveUpd(id,prop,px);
+}
+function atualizarBulkModal(){
+  const bmr=document.getElementById('bulk-m-row'), bpxr=document.getElementById('bulk-px-row');
+  if(!bmr) return;
+  if(escalaPxM>0){ bmr.style.display=''; if(bpxr) bpxr.style.display='none'; bulkSincPx('b-larg','b-larg-m'); bulkSincPx('b-alt','b-alt-m'); }
+  else { bmr.style.display='none'; if(bpxr) bpxr.style.display=''; }
+}
+function bulkSincPx(idPx,idM){ if(!escalaPxM) return; const el=document.getElementById(idM), pxEl=document.getElementById(idPx); if(el&&pxEl) el.value=(+(parseFloat(pxEl.value)||0)/escalaPxM).toFixed(2); }
+function bulkSincMetros(idM,idPx){ if(!escalaPxM) return; const m=parseFloat(document.getElementById(idM)?.value)||0, px=Math.round(m*escalaPxM); if(px<1) return; const pxEl=document.getElementById(idPx); if(pxEl) pxEl.value=px; }
+
+// ════════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════════════
+const CW=1494, CH=842, MIN_W=18, MIN_H=14, ROFF=28;
+const COLORS={
+  disponivel:{fill:'rgba(34,197,94,.38)',hover:'rgba(34,197,94,.62)',stroke:'#22c55e'},
+  vendido:{fill:'rgba(239,68,68,.38)',hover:'rgba(239,68,68,.62)',stroke:'#ef4444'},
+  reservado:{fill:'rgba(245,158,11,.38)',hover:'rgba(245,158,11,.62)',stroke:'#f59e0b'},
+};
+const STA={disponivel:'Disponível',vendido:'Vendido',reservado:'Reservado'};
+
+// ════════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════════
+let lotes=[];
+let mode='view';
+let selId=null;          // single selection
+let selIds=new Set();    // multi selection
+let nextId=1;
+let bgLoaded=false;
+
+// Selection box drag state
+let selBoxDrag=false, selBoxStart=null;
+
+// ════════════════════════════════════════════════════════════════
+//  GEOMETRY / SAT
+// ════════════════════════════════════════════════════════════════
+function corners(l){
+  const cx=l.x+l.w/2, cy=l.y+l.h/2, a=(l.angle||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a), hw=l.w/2, hh=l.h/2;
+  return[{x:cx-hw*c+hh*s,y:cy-hw*s-hh*c},{x:cx+hw*c+hh*s,y:cy+hw*s-hh*c},{x:cx+hw*c-hh*s,y:cy+hw*s+hh*c},{x:cx-hw*c-hh*s,y:cy-hw*s+hh*c}];
+}
+function proj(pts,ax){ const d=pts.map(p=>p.x*ax.x+p.y*ax.y); return{min:Math.min(...d),max:Math.max(...d)}; }
+function axes(pts){ return pts.map((_,i)=>{const a=pts[i],b=pts[(i+1)%pts.length],ex=b.x-a.x,ey=b.y-a.y,len=Math.hypot(ex,ey);return len>0?{x:-ey/len,y:ex/len}:{x:0,y:0};}); }
+function overlaps(a,b){
+  const ca=corners(a),cb=corners(b);
+  const bax={min:Math.min(...ca.map(p=>p.x)),max:Math.max(...ca.map(p=>p.x))};
+  const bay={min:Math.min(...ca.map(p=>p.y)),max:Math.max(...ca.map(p=>p.y))};
+  const bbx={min:Math.min(...cb.map(p=>p.x)),max:Math.max(...cb.map(p=>p.x))};
+  const bby={min:Math.min(...cb.map(p=>p.y)),max:Math.max(...cb.map(p=>p.y))};
+  if(bax.max<=bbx.min||bbx.max<=bax.min||bay.max<=bby.min||bby.max<=bay.min) return false;
+  for(const ax of[...axes(ca),...axes(cb)]){ const pa=proj(ca,ax),pb=proj(cb,ax); if(pa.max<=pb.min||pb.max<=pa.min) return false; }
+  return true;
+}
+function collision(lot,excId){ return lotes.some(o=>!excId.has(o.id)&&overlaps(lot,o)); }
+
+// ════════════════════════════════════════════════════════════════
+//  SVG HELPERS
+// ════════════════════════════════════════════════════════════════
+const NS='http://www.w3.org/2000/svg';
+const mk=t=>document.createElementNS(NS,t);
+const at=(el,a)=>{Object.entries(a).forEach(([k,v])=>el.setAttribute(k,v));return el};
+
+function svgPt(e){
+  const w=document.getElementById('mw'), r=document.getElementById('canvas').getBoundingClientRect();
+  return{x:e.clientX-r.left+w.scrollLeft,y:e.clientY-r.top+w.scrollTop};
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MULTI-SELECT HELPERS
+// ════════════════════════════════════════════════════════════════
+
+/** Centroide do grupo selecionado */
+function groupCenter(){
+  const sel=lotes.filter(l=>selIds.has(l.id));
+  if(!sel.length) return {x:0,y:0};
+  const cx=sel.reduce((s,l)=>s+l.x+l.w/2,0)/sel.length;
+  const cy=sel.reduce((s,l)=>s+l.y+l.h/2,0)/sel.length;
+  return{x:cx,y:cy};
+}
+
+/** Move todos os lotes selecionados por (dx,dy) */
+function moveGroup(dx,dy){
+  const excIds=new Set(selIds);
+  const snaps=lotes.filter(l=>selIds.has(l.id)).map(l=>({...l,x:l.x+dx,y:l.y+dy}));
+  // check collisions against non-selected
+  const ok=snaps.every(snap=>!lotes.some(o=>!selIds.has(o.id)&&overlaps(snap,o)));
+  if(ok){ lotes.filter(l=>selIds.has(l.id)).forEach(l=>{l.x+=dx;l.y+=dy;}); }
+}
+
+/** Rotaciona todos os lotes selecionados em torno do centroide do grupo */
+function rotateGroup(deltaAngle){
+  const {x:cx,y:cy}=groupCenter();
+  lotes.filter(l=>selIds.has(l.id)).forEach(l=>{
+    // rotate center of each lot around group center
+    const lcx=l.x+l.w/2, lcy=l.y+l.h/2;
+    const rad=deltaAngle*Math.PI/180;
+    const cos=Math.cos(rad), sin=Math.sin(rad);
+    const dx=lcx-cx, dy=lcy-cy;
+    const nx=dx*cos-dy*sin+cx, ny=dx*sin+dy*cos+cy;
+    l.x=nx-l.w/2; l.y=ny-l.h/2;
+    l.angle=(l.angle||0)+deltaAngle;
+  });
+}
+
+/** Desenha alça de rotação para seleção múltipla */
+function addGroupRotateHandle(g){
+  const sel=lotes.filter(l=>selIds.has(l.id));
+  if(!sel.length) return;
+  // topo mais alto entre todos os lotes selecionados
+  let minY=Infinity;
+  sel.forEach(l=>{ corners(l).forEach(p=>{ if(p.y<minY) minY=p.y; }); });
+  const {x:cx}=groupCenter();
+  const ry=minY-ROFF-10;
+  // linha tracejada
+  const line=at(mk('line'),{
+    x1:cx,y1:minY-5,x2:cx,y2:ry+7,
+    stroke:'rgba(251,146,60,.5)','stroke-width':'1','stroke-dasharray':'3 2','pointer-events':'none'
+  });
+  g.appendChild(line);
+  // círculo
+  const rh=at(mk('circle'),{cx,cy:ry,r:'8',
+    fill:'#fff',stroke:'#f97316','stroke-width':'2.5','pointer-events':'all',style:'cursor:grab'});
+  // drag to rotate group
+  rh.addEventListener('mousedown',e=>{
+    e.stopPropagation(); e.preventDefault();
+    const sm=svgPt(e);
+    const {x:gcx,y:gcy}=groupCenter();
+    const initA=Math.atan2(sm.y-gcy,sm.x-gcx)*180/Math.PI;
+    let lastA=initA;
+    const mm=ev=>{
+      const c=svgPt(ev);
+      const curA=Math.atan2(c.y-gcy,c.x-gcx)*180/Math.PI;
+      rotateGroup(curA-lastA); lastA=curA; render();
+    };
+    const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+  });
+  g.appendChild(rh);
+}
+
+/** Verifica se ponto (px,py) está dentro do AABB de todos os selecionados (para drag) */
+function pointInGroupBounds(px,py){
+  const sel=lotes.filter(l=>selIds.has(l.id));
+  if(!sel.length) return false;
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  sel.forEach(l=>{ corners(l).forEach(p=>{ x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y); }); });
+  return px>=x0&&px<=x1&&py>=y0&&py<=y1;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MAIN RENDER
+// ════════════════════════════════════════════════════════════════
+function render(){
+  const svg=document.getElementById('svg');
+  svg.innerHTML='';
+  const gL=mk('g'), gLb=mk('g'), gH=mk('g');
+
+  lotes.forEach(l=>{
+    gL.appendChild(criarLoteEl(l));
+    addLabels(gLb,l);
+    if(mode==='edit'&&selId===l.id&&selIds.size===0) addHandles(gH,l);
+  });
+
+  // Multi-select overlay
+  if(mode==='edit'&&selIds.size>1){
+    // highlight border for each selected lot
+    lotes.filter(l=>selIds.has(l.id)).forEach(l=>{
+      const col=COLORS[l.status]||COLORS.disponivel;
+      const cx=l.x+l.w/2, cy=l.y+l.h/2;
+      const outline=at(mk('rect'),{
+        x:l.x-3,y:l.y-3,width:l.w+6,height:l.h+6,
+        fill:'none',stroke:'rgba(251,146,60,.9)','stroke-width':'2',
+        'stroke-dasharray':'5 3',rx:'3',
+        transform:`rotate(${l.angle||0},${cx},${cy})`,
+        'pointer-events':'none',
+      });
+      gH.appendChild(outline);
+    });
+    // group rotate handle
+    addGroupRotateHandle(gH);
+    // invisible drag rect over group bounding box
+    const sel=lotes.filter(l=>selIds.has(l.id));
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    sel.forEach(l=>{ corners(l).forEach(p=>{ x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y); }); });
+    const dragRect=at(mk('rect'),{
+      x:x0,y:y0,width:x1-x0,height:y1-y0,
+      fill:'transparent',stroke:'none','pointer-events':'all',style:'cursor:move'
+    });
+    dragRect.addEventListener('mousedown',e=>{
+      e.stopPropagation(); e.preventDefault();
+      const sm=svgPt(e);
+      const origPos=lotes.filter(l=>selIds.has(l.id)).map(l=>({id:l.id,x:l.x,y:l.y}));
+      const mm=ev=>{
+        const cur=svgPt(ev);
+        const dx=cur.x-sm.x, dy=cur.y-sm.y;
+        const excIds=new Set(selIds);
+        const snaps=origPos.map(o=>({...lotes.find(l=>l.id===o.id),x:o.x+dx,y:o.y+dy}));
+        const ok=snaps.every(snap=>!lotes.some(o=>!selIds.has(o.id)&&overlaps(snap,o)));
+        if(ok){ origPos.forEach(o=>{ const l=lotes.find(l=>l.id===o.id); if(l){l.x=o.x+dx;l.y=o.y+dy;} }); }
+        render();
+      };
+      const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+      window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+    });
+    gH.appendChild(dragRect);
+  }
+
+  svg.appendChild(gL); svg.appendChild(gLb); svg.appendChild(gH);
+  atualizarStats();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  criarLoteEl
+// ════════════════════════════════════════════════════════════════
+function criarLoteEl(l){
+  const col=COLORS[l.status]||COLORS.disponivel;
+  const cx=l.x+l.w/2, cy=l.y+l.h/2;
+  const isSel=(selId===l.id&&selIds.size===0)||(selIds.has(l.id)&&selIds.size===1);
+  const isMSel=selIds.has(l.id)&&selIds.size>1;
+  const g=at(mk('g'),{transform:`rotate(${l.angle||0},${cx},${cy})`});
+  const rect=at(mk('rect'),{
+    x:l.x,y:l.y,width:l.w,height:l.h,
+    fill: isSel||isMSel ? col.hover : col.fill,
+    stroke: isMSel ? '#fb923c' : col.stroke,
+    'stroke-width': isSel||isMSel ? '3' : '1.5',
+    rx:'2','pointer-events':'all',
+    style:'cursor:'+(mode==='view'?'pointer':mode==='edit'?'grab':'default'),
+  });
+
+  rect.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(mode==='view'){ abrirPopup(e,l); return; }
+    if(mode==='edit'){
+      if(e.shiftKey||e.ctrlKey||e.metaKey){
+        // toggle in multi-selection
+        if(selIds.has(l.id)){ selIds.delete(l.id); }
+        else { if(selId) selIds.add(selId); selIds.add(l.id); }
+        if(selIds.size===1){ selId=[...selIds][0]; selIds.clear(); }
+        else { selId=null; }
+      } else {
+        selIds.clear(); selId=l.id;
+      }
+      render(); renderSB(selIds.size>1?'multi':(selId?'l':null),selIds.size>1?null:selId);
+    }
+  });
+  rect.addEventListener('mouseenter',()=>{ rect.setAttribute('fill',col.hover); });
+  rect.addEventListener('mouseleave',()=>{ if(!(isSel||isMSel)) rect.setAttribute('fill',col.fill); });
+
+  // Drag single lot
+  rect.addEventListener('mousedown',e=>{
+    if(mode!=='edit') return;
+    // If this lot is part of a multi-select, the group drag rect handles it
+    if(selIds.has(l.id)&&selIds.size>1) return;
+    e.stopPropagation(); e.preventDefault();
+    if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; }
+    const sm=svgPt(e), ox=l.x, oy=l.y;
+    const mm=ev=>{
+      const cur=svgPt(ev);
+      const trial={...l,x:ox+cur.x-sm.x,y:oy+cur.y-sm.y};
+      if(!collision(trial,new Set([l.id]))){ l.x=trial.x; l.y=trial.y; render(); }
+    };
+    const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+  });
+  g.appendChild(rect);
+  return g;
+}
+
+function addLabels(g,l){
+  const cx=l.x+l.w/2, cy=l.y+l.h/2, a=l.angle||0;
+  if(l.h>18){
+    const t=at(mk('text'),{x:cx,y:l.h>33?cy-4:cy+4,transform:`rotate(${a},${cx},${cy})`,
+      'text-anchor':'middle','dominant-baseline':'middle','font-family':'JetBrains Mono,monospace',
+      'font-size':l.w>55?'11':'9','font-weight':'700',fill:'#fff','pointer-events':'none'});
+    t.textContent=String(l.numero||'?').padStart(2,'00'); g.appendChild(t);
+  }
+  if(l.h>35&&l.w>46){
+    const t2=at(mk('text'),{x:cx,y:cy+10,transform:`rotate(${a},${cx},${cy})`,
+      'text-anchor':'middle','font-family':'JetBrains Mono,monospace',
+      'font-size':'8',fill:'rgba(255,255,255,.7)','pointer-events':'none'});
+    t2.textContent=(l.tamanho||0)+'m²'; g.appendChild(t2);
+  }
+}
+
+function addHandles(g,l){
+  const a_deg=l.angle||0, a_rad=a_deg*Math.PI/180, cos_=Math.cos(a_rad), sin_=Math.sin(a_rad);
+  const cx=l.x+l.w/2, cy=l.y+l.h/2, hw=l.w/2, hh=l.h/2;
+  const W=(lx,ly)=>({x:cx+lx*cos_-ly*sin_,y:cy+lx*sin_+ly*cos_});
+  const rp=W(0,-(hh+ROFF)), tc=W(0,-hh);
+  g.appendChild(at(mk('line'),{x1:tc.x,y1:tc.y,x2:rp.x,y2:rp.y,stroke:'rgba(79,156,249,.5)','stroke-width':'1','stroke-dasharray':'3 2','pointer-events':'none'}));
+  const rh=at(mk('circle'),{cx:rp.x,cy:rp.y,r:'7',fill:'#fff',stroke:'#4f9cf9','stroke-width':'2','pointer-events':'all',style:'cursor:grab'});
+  bindRotate(rh,l,cx,cy); g.appendChild(rh);
+  [{lx:-hw,ly:-hh,t:'tl'},{lx:hw,ly:-hh,t:'tr'},{lx:hw,ly:hh,t:'br'},{lx:-hw,ly:hh,t:'bl'}].forEach(({lx,ly,t})=>{
+    const wp=W(lx,ly);
+    const h=at(mk('rect'),{x:wp.x-5,y:wp.y-5,width:10,height:10,rx:'2',fill:'#fde047',stroke:'#050810','stroke-width':'1.5','pointer-events':'all',style:'cursor:grab'});
+    bindCorner(h,l,t,a_rad,cos_,sin_); g.appendChild(h);
+  });
+  [{lx:0,ly:-hh,t:'tm'},{lx:hw,ly:0,t:'mr'},{lx:0,ly:hh,t:'bm'},{lx:-hw,ly:0,t:'ml'}].forEach(({lx,ly,t})=>{
+    const wp=W(lx,ly);
+    const h=at(mk('rect'),{x:wp.x-4,y:wp.y-4,width:8,height:8,rx:'2',fill:'#38bdf8',stroke:'#050810','stroke-width':'1.5','pointer-events':'all',style:'cursor:grab'});
+    bindEdge(h,l,t,a_rad,cos_,sin_); g.appendChild(h);
+  });
+}
+
+function bindRotate(el,l,cx,cy){
+  el.addEventListener('mousedown',e=>{
+    e.stopPropagation(); e.preventDefault();
+    const sm=svgPt(e), initA=Math.atan2(sm.y-cy,sm.x-cx)*180/Math.PI, initL=l.angle||0;
+    const mm=ev=>{ const c=svgPt(ev); const na=initL+(Math.atan2(c.y-cy,c.x-cx)*180/Math.PI-initA); const trial={...l,angle:na}; if(!collision(trial,new Set([l.id]))){l.angle=na;render();} };
+    const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+  });
+}
+function bindCorner(el,l,type,a_rad,cos_,sin_){
+  el.addEventListener('mousedown',e=>{
+    e.stopPropagation(); e.preventDefault();
+    const sm=svgPt(e), orig={x:l.x,y:l.y,w:l.w,h:l.h}, C=cos_, S=sin_;
+    const mm=ev=>{
+      const c=svgPt(ev), dw=c.x-sm.x, dh=c.y-sm.y, dl_x=dw*C+dh*S, dl_y=-dw*S+dh*C;
+      let nw,nh,nx,ny;
+      switch(type){
+        case'br':nw=orig.w+dl_x;nh=orig.h+dl_y;nx=orig.x+dl_x/2*(C-1)-dl_y/2*S;ny=orig.y+dl_x/2*S+dl_y/2*(C-1);break;
+        case'tl':nw=orig.w-dl_x;nh=orig.h-dl_y;nx=orig.x+dl_x/2*(C+1)-dl_y/2*S;ny=orig.y+dl_x/2*S+dl_y/2*(C+1);break;
+        case'tr':nw=orig.w+dl_x;nh=orig.h-dl_y;nx=orig.x+dl_x/2*(C-1)-dl_y/2*S;ny=orig.y+dl_x/2*S+dl_y/2*(C+1);break;
+        case'bl':nw=orig.w-dl_x;nh=orig.h+dl_y;nx=orig.x+dl_x/2*(C+1)-dl_y/2*S;ny=orig.y+dl_x/2*S+dl_y/2*(C-1);break;
+      }
+      if(nw<MIN_W||nh<MIN_H) return;
+      const trial={...l,x:nx,y:ny,w:nw,h:nh};
+      if(!collision(trial,new Set([l.id]))){l.x=nx;l.y=ny;l.w=nw;l.h=nh;render();}
+    };
+    const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+  });
+}
+function bindEdge(el,l,type,a_rad,cos_,sin_){
+  el.addEventListener('mousedown',e=>{
+    e.stopPropagation(); e.preventDefault();
+    const sm=svgPt(e), orig={x:l.x,y:l.y,w:l.w,h:l.h}, C=cos_, S=sin_;
+    const mm=ev=>{
+      const c=svgPt(ev), dw=c.x-sm.x, dh=c.y-sm.y, dl_x=dw*C+dh*S, dl_y=-dw*S+dh*C;
+      let nw=orig.w,nh=orig.h,nx=orig.x,ny=orig.y;
+      switch(type){
+        case'mr':nw=orig.w+dl_x;nx=orig.x+dl_x/2*(C-1);ny=orig.y+dl_x/2*S;break;
+        case'ml':nw=orig.w-dl_x;nx=orig.x+dl_x/2*(C+1);ny=orig.y+dl_x/2*S;break;
+        case'bm':nh=orig.h+dl_y;nx=orig.x-dl_y/2*S;ny=orig.y+dl_y/2*(C-1);break;
+        case'tm':nh=orig.h-dl_y;nx=orig.x-dl_y/2*S;ny=orig.y+dl_y/2*(C+1);break;
+      }
+      if(nw<MIN_W||nh<MIN_H) return;
+      const trial={...l,x:nx,y:ny,w:nw,h:nh};
+      if(!collision(trial,new Set([l.id]))){l.x=nx;l.y=ny;l.w=nw;l.h=nh;render();}
+    };
+    const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+    window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SELECTION BOX (rubber-band, edit mode)
+// ════════════════════════════════════════════════════════════════
+const selBoxEl=document.getElementById('selbox');
+
+function startSelBox(e){
+  if(mode!=='edit') return;
+  selBoxDrag=true; selBoxStart=svgPt(e);
+  selBoxEl.style.display='block';
+  selBoxEl.style.left=selBoxStart.x+'px';
+  selBoxEl.style.top=selBoxStart.y+'px';
+  selBoxEl.style.width='0px'; selBoxEl.style.height='0px';
+}
+function updateSelBox(e){
+  if(!selBoxDrag) return;
+  const cur=svgPt(e);
+  const x=Math.min(cur.x,selBoxStart.x), y=Math.min(cur.y,selBoxStart.y);
+  const w=Math.abs(cur.x-selBoxStart.x), h=Math.abs(cur.y-selBoxStart.y);
+  selBoxEl.style.left=x+'px'; selBoxEl.style.top=y+'px';
+  selBoxEl.style.width=w+'px'; selBoxEl.style.height=h+'px';
+}
+function endSelBox(e){
+  if(!selBoxDrag) return;
+  selBoxDrag=false; selBoxEl.style.display='none';
+  const cur=svgPt(e);
+  const rx=Math.min(cur.x,selBoxStart.x), ry=Math.min(cur.y,selBoxStart.y);
+  const rw=Math.abs(cur.x-selBoxStart.x), rh=Math.abs(cur.y-selBoxStart.y);
+  if(rw<5&&rh<5) return; // too small, treat as click
+  const inBox=lotes.filter(l=>{
+    const cx=l.x+l.w/2, cy=l.y+l.h/2;
+    return cx>=rx&&cx<=rx+rw&&cy>=ry&&cy<=ry+rh;
+  });
+  if(inBox.length>0){
+    selIds=new Set(inBox.map(l=>l.id));
+    selId=null;
+    if(selIds.size===1){ selId=[...selIds][0]; selIds.clear(); }
+    render(); renderSB(selIds.size>1?'multi':(selId?'l':null),selIds.size>1?null:selId);
+    if(selIds.size>1) notif(`${selIds.size} lotes selecionados (Shift+clique para adicionar/remover)`,'inf');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MAP EVENTS
+// ════════════════════════════════════════════════════════════════
+document.getElementById('mw').addEventListener('mousedown',e=>{
+  if(scaleMode) return;
+  if(mode==='edit'){
+    // Start rubber-band only if clicking on empty canvas (not on SVG elements)
+    if(e.target.id==='mw'||e.target.id==='canvas'||e.target.id==='bgimg'||e.target.id==='gridovl'||e.target===document.getElementById('svg')){
+      startSelBox(e);
+    }
+  }
+});
+document.addEventListener('mousemove',e=>{ updateSelBox(e); });
+document.addEventListener('mouseup',e=>{ endSelBox(e); });
+
+document.getElementById('mw').addEventListener('click',e=>{
+  if(scaleMode){ handleScaleClick(e); return; }
+  if(mode!=='create') return;
+  const pt=svgPt(e);
+  placeLot(pt.x-40,pt.y-28);
+});
+
+document.getElementById('canvas').addEventListener('click',e=>{
+  if(['canvas','bgimg','gridovl'].includes(e.target.id)&&mode==='edit'){
+    selId=null; selIds.clear(); render(); renderSB();
+  }
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(scaleMode){_miniCancel();return;}
+    if(mode==='create') setMode('edit');
+    else if(mode==='edit'){ selId=null; selIds.clear(); render(); renderSB(); }
+  }
+  if((e.key==='Delete'||e.key==='Backspace')&&mode==='edit'){
+    if(document.activeElement?.tagName==='INPUT') return;
+    if(selIds.size>1){
+      const n=selIds.size;
+      [...selIds].forEach(id=>{ lotes=lotes.filter(l=>l.id!==id); });
+      selIds.clear(); selId=null; salvarStorage(); render(); renderSB();
+      notif(`${n} lotes removidos.`,'ok');
+    } else if(selId){ deletarLote(selId); }
+  }
+  // Ctrl+A: select all in edit mode
+  if((e.ctrlKey||e.metaKey)&&e.key==='a'&&mode==='edit'){
+    e.preventDefault();
+    selIds=new Set(lotes.map(l=>l.id)); selId=null;
+    if(selIds.size===1){selId=[...selIds][0];selIds.clear();}
+    render(); renderSB(selIds.size>1?'multi':null,null);
+    if(selIds.size>1) notif(`${selIds.size} lotes selecionados`,'inf');
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
+//  LOT CREATION
+// ════════════════════════════════════════════════════════════════
+function placeLot(x,y){
+  const maxQ=lotes.reduce((m,l)=>Math.max(m,l.quadra||1),1);
+  const maxN=lotes.reduce((m,l)=>Math.max(m,l.numero||0),0);
+  const l={id:'l'+(nextId++),quadra:maxQ,numero:maxN+1,tamanho:200,preco:0,status:'disponivel',x,y,w:80,h:55,angle:0};
+  let placed=false;
+  for(let dy=0;dy<=200&&!placed;dy+=5){ for(let dx=0;dx<=200&&!placed;dx+=5){ const t={...l,x:l.x+dx,y:l.y+dy}; if(!collision(t,new Set([t.id]))){l.x=t.x;l.y=t.y;placed=true;} } }
+  if(!placed){notif('Espaço ocupado — mova um lote existente','err');return;}
+  lotes.push(l); selIds.clear(); selId=l.id; setMode('edit'); salvarStorage(); render(); renderSB('l',l.id);
+  notif('Lote criado! Arraste para posicionar.','ok');
+}
+
+function criarVarios(cfg){
+  let cx=cfg.x, cy=cfg.y, criados=0;
+  for(let i=0;i<cfg.quantidade;i++){
+    const l={id:'l'+(nextId++),quadra:cfg.quadra,numero:cfg.numInicial+i,tamanho:cfg.tamanho,preco:cfg.preco||0,status:cfg.status||'disponivel',x:cx,y:cy,w:cfg.w,h:cfg.h,angle:0};
+    if(!collision(l,new Set([l.id]))){lotes.push(l);criados++;}
+    if(cfg.direcao==='H') cx+=cfg.w; else cy+=cfg.h;
+  }
+  if(criados>0){salvarStorage();render();renderSB();notif(`${criados} lotes criados!`,'ok');}
+  else notif('Nenhum lote coube — verifique a posição','err');
+}
+
+function deletarLote(id){
+  lotes=lotes.filter(l=>l.id!==id);
+  if(selId===id) selId=null; selIds.delete(id);
+  salvarStorage(); render(); renderSB(); notif('Lote removido.','ok');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  POPUP
+// ════════════════════════════════════════════════════════════════
+function abrirPopup(e,l){
+  const pop=document.getElementById('popup');
+  const badge=document.getElementById('pop-badge');
+  badge.className='pbg '+l.status; badge.textContent=STA[l.status];
+  document.getElementById('pop-title').textContent=`Lote ${String(l.numero||0).padStart(2,'00')}`;
+  document.getElementById('pop-q').textContent=`Quadra ${l.quadra||1}`;
+  document.getElementById('pop-tam').textContent=(l.tamanho||0)+' m²';
+  document.getElementById('pop-preco').textContent=fmtPreco(l.preco);
+  const sv=document.getElementById('pop-status');
+  sv.textContent=STA[l.status]; sv.className='pop-v '+{disponivel:'gn',vendido:'rd',reservado:'yw'}[l.status];
+  pop.classList.remove('vis');
+  const pw=232,ph=210,vw=window.innerWidth,vh=window.innerHeight;
+  let x=e.clientX+14,y=e.clientY+14;
+  if(x+pw>vw-10) x=e.clientX-pw-14; if(y+ph>vh-10) y=e.clientY-ph-14;
+  pop.style.left=x+'px'; pop.style.top=y+'px';
+  requestAnimationFrame(()=>pop.classList.add('vis'));
+}
+function fecharPopup(){document.getElementById('popup').classList.remove('vis');}
+document.getElementById('px').addEventListener('click',fecharPopup);
+document.addEventListener('click',e=>{ const pop=document.getElementById('popup'); if(!pop.contains(e.target)&&!e.target.closest('g')) fecharPopup(); });
+
+// ════════════════════════════════════════════════════════════════
+//  SIDEBAR
+// ════════════════════════════════════════════════════════════════
+function renderSB(view,payload){
+  const title=document.getElementById('sbt'), cnt=document.getElementById('sbc'), body=document.getElementById('sbb');
+  cnt.textContent='';
+
+  // Multi-select panel
+  if(view==='multi'){
+    title.textContent='Seleção Múltipla';
+    cnt.textContent=selIds.size;
+    const sel=lotes.filter(l=>selIds.has(l.id));
+    body.innerHTML=`
+      <div class="msel-box">
+        <div class="msel-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span class="msel-count">${selIds.size}</span> lotes selecionados
+        </div>
+        <div style="font-size:10px;color:var(--mu);line-height:1.8;margin-bottom:10px">
+          🖱 <b>Arraste</b> para mover o grupo<br>
+          🔄 <b>Alça laranja</b> para rotacionar<br>
+          ⇧ <b>Shift+clique</b> para adicionar/remover<br>
+          <kbd style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:9px">Del</kbd> para excluir todos
+        </div>
+        <div class="fg">
+          <label class="fl">Alterar status de todos</label>
+          <div class="spw">
+            <div class="sp d" onclick="mselStatus('disponivel',this)">Disponível</div>
+            <div class="sp v" onclick="mselStatus('vendido',this)">Vendido</div>
+            <div class="sp r" onclick="mselStatus('reservado',this)">Reservado</div>
+          </div>
+        </div>
+        <div class="msel-actions">
+          <button class="btn btn-d" onclick="mselDeletar()">🗑 Excluir todos</button>
+          <button class="btn btn-g" onclick="mselDesselecionar()">✕ Desselecionar</button>
+        </div>
+      </div>
+      <div class="slbl">Lotes selecionados</div>
+      ${sel.sort((a,b)=>(a.quadra-b.quadra)||a.numero-b.numero).map(l=>`
+        <div class="ll msel-on" onclick="mselToggle('${l.id}',event)">
+          <div class="ll-dot ${l.status}"></div>
+          <div class="ll-l">Q${l.quadra} · Lote ${String(l.numero).padStart(2,'00')}</div>
+          <div class="ll-s">${fmtPreco(l.preco)}</div>
+        </div>`).join('')}
+      <div style="margin-top:10px">
+        <button class="btn btn-g" onclick="selId=null;selIds.clear();render();renderSB()">← Lista completa</button>
+      </div>
+    `;
+    return;
+  }
+
+  // Single lot edit
+  if(view==='l'){
+    const l=lotes.find(x=>x.id===payload); if(!l){renderSB();return;}
+    title.textContent=`Lote ${String(l.numero||0).padStart(2,'00')}`; cnt.textContent=`Q${l.quadra||1}`;
+    body.innerHTML=`
+      <div class="fg"><label class="fl">Status</label>
+        <div class="spw">
+          <div class="sp d ${l.status==='disponivel'?'on':''}" onclick="sbSp(this,'disponivel','${l.id}')">Disponível</div>
+          <div class="sp v ${l.status==='vendido'?'on':''}"    onclick="sbSp(this,'vendido','${l.id}')">Vendido</div>
+          <div class="sp r ${l.status==='reservado'?'on':''}"  onclick="sbSp(this,'reservado','${l.id}')">Reservado</div>
+        </div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Quadra</label><input class="fi" id="ls-q" type="number" min="1" value="${l.quadra||1}"/></div>
+        <div class="fg"><label class="fl">Número</label><input class="fi" id="ls-n" type="number" min="0" value="${l.numero||1}"/></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Tamanho (m²)</label><input class="fi" id="ls-t" type="number" min="1" value="${l.tamanho||200}"/></div>
+        <div class="fg"><label class="fl">Preço (R$)</label><input class="fi" id="ls-p" type="number" min="0" value="${l.preco||0}"/></div>
+      </div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">Ângulo °</label><input class="fi" id="ls-a" type="number" step="0.5" value="${+(l.angle||0).toFixed(1)}" oninput="liveUpd('${l.id}','angle',+this.value)"/></div>
+        <div class="fg"><label class="fl">Larg px</label><input class="fi" id="ls-w" type="number" min="${MIN_W}" value="${Math.round(l.w)}" oninput="liveUpd('${l.id}','w',+this.value);sincMetros('ls-w','ls-wm')"/></div>
+        <div class="fg"><label class="fl">Alt px</label><input class="fi" id="ls-h" type="number" min="${MIN_H}" value="${Math.round(l.h)}" oninput="liveUpd('${l.id}','h',+this.value);sincMetros('ls-h','ls-hm')"/></div>
+      </div>
+      ${escalaPxM>0?`<div class="fr2" style="margin-top:6px">
+        <div class="fg"><label class="fl" style="color:#fde047">↔ Larg (m)</label>
+          <input class="fi" id="ls-wm" type="number" min="0.1" step="0.1" value="${+(l.w/escalaPxM).toFixed(2)}" oninput="liveUpdMetros('${l.id}','w','ls-wm','ls-w')" style="border-color:rgba(245,158,11,.4)"/></div>
+        <div class="fg"><label class="fl" style="color:#fde047">↕ Alt (m)</label>
+          <input class="fi" id="ls-hm" type="number" min="0.1" step="0.1" value="${+(l.h/escalaPxM).toFixed(2)}" oninput="liveUpdMetros('${l.id}','h','ls-hm','ls-h')" style="border-color:rgba(245,158,11,.4)"/></div>
+      </div>`:''}
+      <div class="fr2">
+        <div class="fg"><label class="fl">X</label><input class="fi" id="ls-x" type="number" value="${Math.round(l.x)}" oninput="liveUpd('${l.id}','x',+this.value)"/></div>
+        <div class="fg"><label class="fl">Y</label><input class="fi" id="ls-y" type="number" value="${Math.round(l.y)}" oninput="liveUpd('${l.id}','y',+this.value)"/></div>
+      </div>
+      <div class="div"></div>
+      <div class="br2">
+        <button class="btn btn-p" onclick="salvarLote('${l.id}')">Salvar</button>
+        <button class="btn btn-d" onclick="deletarLote('${l.id}')">Deletar</button>
+      </div>
+      <button class="btn btn-g" style="margin-top:7px" onclick="selId=null;render();renderSB()">← Lista</button>
+      <div class="div"></div>
+      <div class="hbox" style="font-size:10px">
+        <b>Mover:</b> arraste o lote<br>
+        <b>Redimensionar:</b> alças amarelas (cantos) ou azuis (bordas)<br>
+        <b>Rotacionar:</b> alça branca acima<br>
+        <b style="color:#fb923c">Seleção múltipla:</b> Shift+clique ou arraste área vazia<br>
+        <b>Ctrl+A:</b> selecionar todos
+      </div>`;
+    return;
+  }
+
+  // Lot list
+  title.textContent='Lotes';
+  if(lotes.length===0){
+    body.innerHTML=`<div class="empty">
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#4f9cf9" stroke-width="1.2">
+        <rect x="2" y="3" width="20" height="18" rx="2"/><path d="M7 8h10M7 12h7M7 16h4"/>
+      </svg>
+      <p>Nenhum lote ainda.<br>Use <strong>＋ Novo Lote</strong> ou<br><strong>⊞ Criar Vários</strong>.</p>
+    </div>`;
+    return;
+  }
+  cnt.textContent=lotes.length;
+  const byQ={};
+  lotes.forEach(l=>{ const q=l.quadra||1; (byQ[q]=byQ[q]||[]).push(l); });
+  body.innerHTML=Object.entries(byQ).sort(([a],[b])=>+a-+b).map(([q,ql])=>`
+    <div class="qi">
+      <div class="qi-h" onclick="toggleQ('q${q}')">
+        <div class="qdot"></div>
+        <div class="qi-i">
+          <div class="qi-t">Quadra ${q}</div>
+          <div class="qi-s">${ql.length} lotes
+            <span style="color:#4ade80">D:${ql.filter(l=>l.status==='disponivel').length}</span>
+            <span style="color:#f87171;margin-left:5px">V:${ql.filter(l=>l.status==='vendido').length}</span>
+            <span style="color:#fde047;margin-left:5px">R:${ql.filter(l=>l.status==='reservado').length}</span>
+          </div>
+        </div>
+      </div>
+      <div class="llw open" id="q${q}">
+        ${ql.sort((a,b)=>a.numero-b.numero).map(l=>`
+          <div class="ll ${selId===l.id?'on':''} ${selIds.has(l.id)?'msel-on':''}"
+            onclick="onLotListClick('${l.id}',event)">
+            <div class="ll-dot ${l.status}"></div>
+            <div class="ll-l">Lote ${String(l.numero).padStart(2,'00')} — ${l.tamanho}m²</div>
+            <div class="ll-s">${fmtPreco(l.preco)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function onLotListClick(id,e){
+  if(mode!=='edit'){ setMode('edit'); }
+  if(e.shiftKey||e.ctrlKey||e.metaKey){
+    if(selIds.has(id)) selIds.delete(id);
+    else { selIds.add(id); if(selId) selIds.add(selId); selId=null; }
+    if(selIds.size===1){ selId=[...selIds][0]; selIds.clear(); }
+    else if(selIds.size===0){ selId=null; }
+  } else {
+    selIds.clear(); selId=id;
+  }
+  render(); renderSB(selIds.size>1?'multi':(selId?'l':null),selIds.size>1?null:selId);
+}
+
+// Multi-select sidebar actions
+function mselStatus(s,el){
+  el.closest('.spw').querySelectorAll('.sp').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  lotes.filter(l=>selIds.has(l.id)).forEach(l=>l.status=s);
+  salvarStorage(); render();
+  notif(`Status alterado para "${STA[s]}" em ${selIds.size} lotes`,'ok');
+}
+function mselDeletar(){
+  const n=selIds.size;
+  [...selIds].forEach(id=>{ lotes=lotes.filter(l=>l.id!==id); });
+  selIds.clear(); selId=null; salvarStorage(); render(); renderSB();
+  notif(`${n} lotes removidos.`,'ok');
+}
+function mselDesselecionar(){ selIds.clear(); selId=null; render(); renderSB(); }
+function mselToggle(id,e){
+  e.stopPropagation();
+  selIds.delete(id);
+  if(selIds.size===1){ selId=[...selIds][0]; selIds.clear(); }
+  else if(selIds.size===0){ selId=null; }
+  render(); renderSB(selIds.size>1?'multi':(selId?'l':null),selIds.size>1?null:selId);
+}
+
+function toggleQ(id){ const el=document.getElementById(id); if(el) el.classList.toggle('open'); }
+function sbSp(el,s,id){
+  el.closest('.spw').querySelectorAll('.sp').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  const l=lotes.find(x=>x.id===id); if(l){l.status=s;salvarStorage();render();}
+}
+function liveUpd(id,prop,val){
+  const l=lotes.find(x=>x.id===id); if(!l) return;
+  const trial={...l,[prop]:val};
+  if(!collision(trial,new Set([id]))){ l[prop]=val; render(); }
+}
+function salvarLote(id){
+  const l=lotes.find(x=>x.id===id); if(!l) return;
+  l.quadra=parseInt(document.getElementById('ls-q').value)||1;
+  l.numero=parseInt(document.getElementById('ls-n').value)||1;
+  l.tamanho=parseInt(document.getElementById('ls-t').value)||l.tamanho;
+  l.preco=parseFloat(document.getElementById('ls-p').value)||0;
+  salvarStorage(); render(); renderSB();
+  notif('Lote salvo!','ok');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MODE MANAGEMENT
+// ════════════════════════════════════════════════════════════════
+const HINTS={
+  create:'Clique na imagem para posicionar o novo lote — Esc para cancelar',
+  edit:  'Clique: selecionar · Shift/Ctrl+clique: multi-seleção · Arraste área vazia: selecionar múltiplos · Ctrl+A: todos',
+  view:  'Clique num lote para ver os detalhes completos',
+};
+function setMode(m){
+  mode=m;
+  if(m!=='edit'){ selId=null; selIds.clear(); }
+  document.getElementById('btn-criar').classList.toggle('on',m==='create');
+  document.getElementById('btn-e').classList.toggle('on',m==='edit');
+  document.getElementById('btn-v').classList.toggle('on',m==='view');
+  document.getElementById('mw').className='c-'+{create:'draw',edit:'edit',view:'view'}[m];
+  document.getElementById('hint').textContent=HINTS[m];
+  render(); renderSB();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MODAL (bulk creation)
+// ════════════════════════════════════════════════════════════════
+function abrirModalBulk(){
+  const maxN=lotes.reduce((m,l)=>Math.max(m,l.numero||0),0);
+  document.getElementById('b-ni').value=maxN+1;
+  atualizarBulkModal();
+  document.getElementById('mbg').classList.add('vis');
+}
+function cancelModal(){document.getElementById('mbg').classList.remove('vis');}
+function mSp(el,s){
+  document.querySelectorAll('#mbg .sp').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on'); document.getElementById('b-status').value=s;
+}
+function confirmarBulk(){
+  const qt=parseInt(document.getElementById('b-qt').value)||0;
+  if(!qt||qt<1){notif('Informe a quantidade','err');return;}
+  document.getElementById('mbg').classList.remove('vis');
+  criarVarios({
+    quadra:parseInt(document.getElementById('b-q').value)||1,
+    numInicial:parseInt(document.getElementById('b-ni').value)||1,
+    quantidade:qt,
+    tamanho:parseInt(document.getElementById('b-tam').value)||200,
+    preco:parseFloat(document.getElementById('b-preco').value)||0,
+    status:document.getElementById('b-status').value,
+    x:parseFloat(document.getElementById('b-x').value)||100,
+    y:parseFloat(document.getElementById('b-y').value)||100,
+    w:parseFloat(document.getElementById('b-larg').value)||80,
+    h:parseFloat(document.getElementById('b-alt').value)||55,
+    direcao:document.querySelector('#mbg input[name=dir]:checked')?.value||'H',
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  IMAGE
+// ════════════════════════════════════════════════════════════════
+function uploadImg(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ aplicarImg(e.target.result); try{localStorage.setItem('lot_bg',e.target.result);}catch(ex){} notif('Imagem carregada!','ok'); };
+  reader.readAsDataURL(file); input.value='';
+}
+function aplicarImg(src){ document.getElementById('bgimg').src=src; document.getElementById('dz').classList.add('gone'); bgLoaded=true; }
+
+// ════════════════════════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════════════════════════
+function atualizarStats(){
+  let d=0,v=0,r=0;
+  lotes.forEach(l=>{if(l.status==='disponivel')d++;else if(l.status==='vendido')v++;else r++;});
+  document.getElementById('cntd').textContent=d;
+  document.getElementById('cntv').textContent=v;
+  document.getElementById('cntr').textContent=r;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ════════════════════════════════════════════════════════════════
+function salvarStorage(){ try{localStorage.setItem('lot_man_v1',JSON.stringify({lotes,nextId}));}catch(e){} atualizarStats(); }
+function carregarStorage(){
+  try{const s=localStorage.getItem('lot_man_v1'); if(s){const d=JSON.parse(s); lotes=d.lotes||[]; nextId=d.nextId||1;}}catch(e){}
+  try{const bg=localStorage.getItem('lot_bg'); if(bg) aplicarImg(bg);}catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════
+//  EXPORT
+// ════════════════════════════════════════════════════════════════
+function expJSON(){
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(lotes,null,2));
+  a.download='lotes.json'; a.click();
+}
+function expHTML(){
+  const imgSrc=document.getElementById('bgimg').src||'';
+  let polys='',labels='';
+  lotes.forEach(l=>{
+    const col=COLORS[l.status], cx=l.x+l.w/2, cy=l.y+l.h/2, a=l.angle||0;
+    const dat=encodeURIComponent(JSON.stringify(l));
+    polys+=`<g transform="rotate(${a},${cx},${cy})"><rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" fill="${col.fill}" stroke="${col.stroke}" stroke-width="1.5" rx="2" class="lp" data-i="${dat}" style="cursor:pointer"/></g>`;
+    if(l.h>18) labels+=`<text x="${cx}" y="${l.h>33?cy-4:cy+4}" transform="rotate(${a},${cx},${cy})" text-anchor="middle" font-family="monospace" font-size="11" font-weight="bold" fill="white" pointer-events="none">${String(l.numero).padStart(2,'00')}</text>`;
+    if(l.h>35&&l.w>46) labels+=`<text x="${cx}" y="${cy+10}" transform="rotate(${a},${cx},${cy})" text-anchor="middle" font-family="monospace" font-size="8" fill="rgba(255,255,255,.7)" pointer-events="none">${l.tamanho}m²</text>`;
+  });
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Mapa Loteamento</title><style>body{margin:0;background:#050810;overflow:auto;font-family:sans-serif}#w{position:relative;width:${CW}px;height:${CH}px}img{display:block;width:100%;height:100%}svg{position:absolute;inset:0;width:100%;height:100%}.lp:hover{opacity:.72;cursor:pointer}#pop{display:none;position:fixed;z-index:99;background:rgba(8,12,20,.97);border:1px solid rgba(79,156,249,.25);border-radius:13px;padding:15px 17px;color:#d8e4ff;min-width:225px;box-shadow:0 24px 70px rgba(0,0,0,.85)}.pb{display:inline-block;padding:3px 11px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.11em;margin-bottom:11px}.pb.disponivel{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)}.pb.vendido{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}.pb.reservado{background:rgba(245,158,11,.15);color:#fde047;border:1px solid rgba(245,158,11,.3)}.pr{display:flex;justify-content:space-between;border-bottom:1px solid rgba(79,156,249,.1);padding:6px 0}.pr:last-child{border:none}.pl{font-size:10px;color:#5a7299;text-transform:uppercase}.pv{font-weight:700;font-family:monospace;font-size:13px}.ac{color:#4f9cf9}h3{font-size:15px;font-weight:700;margin-bottom:11px}</style></head><body>
+<div id="w"><img src="${imgSrc}" alt=""/><svg xmlns="http://www.w3.org/2000/svg">${polys}${labels}</svg></div>
+<div id="pop"></div>
+<script>
+const S={disponivel:'Disponivel',vendido:'Vendido',reservado:'Reservado'};
+const F=v=>!v?'--':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0});
+const pop=document.getElementById('pop');
+document.querySelectorAll('.lp').forEach(el=>{
+  el.addEventListener('click',e=>{
+    const d=JSON.parse(decodeURIComponent(el.dataset.i));
+    pop.innerHTML='<div class="pb '+d.status+'">'+S[d.status]+'</div><h3>Quadra '+d.quadra+' - Lote '+String(d.numero).padStart(2,'00')+'</h3>'+
+      '<div class="pr"><span class="pl">Tamanho</span><span class="pv">'+d.tamanho+'m2</span></div>'+
+      '<div class="pr"><span class="pl">Preco</span><span class="pv ac">'+F(d.preco)+'</span></div>'+
+      '<div class="pr"><span class="pl">Status</span><span class="pv">'+S[d.status]+'</span></div>';
+    pop.style.display='block';
+    let x=e.clientX+14,y=e.clientY+14;
+    if(x+235>window.innerWidth-10)x=e.clientX-249;if(y+200>window.innerHeight-10)y=e.clientY-200;
+    pop.style.left=x+'px';pop.style.top=y+'px';
+  });
+});
+document.addEventListener('click',e=>{if(!pop.contains(e.target)&&!e.target.closest('g'))pop.style.display='none';});
+<\/script></body></html>`;
+  const a=document.createElement('a');
+  a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);
+  a.download='mapa_loteamento.html'; a.click();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════════
+function fmtPreco(v){ if(!v||v===0) return '—'; return Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:0}); }
+let notifT=null;
+function notif(msg,type='ok'){
+  const el=document.getElementById('notif');
+  el.textContent=msg; el.className='vis '+type;
+  if(notifT) clearTimeout(notifT);
+  notifT=setTimeout(()=>el.classList.remove('vis'),3000);
+}
+function limparTudo(){
+  if(!confirm('Remover todos os lotes?')) return;
+  lotes=[]; nextId=1; selId=null; selIds.clear();
+  try{localStorage.removeItem('lot_man_v1');}catch(e){}
+  render(); renderSB(); notif('Tudo removido.','ok');
+}
+function sizarCanvas(){
+  const img=document.getElementById('bgimg');
+  const w=img.naturalWidth||CW, h=img.naturalHeight||CH;
+  const c=document.getElementById('canvas'), svg=document.getElementById('svg');
+  c.style.width=w+'px'; c.style.height=h+'px';
+  svg.style.width=w+'px'; svg.style.height=h+'px';
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  const c=document.getElementById('canvas'), svg=document.getElementById('svg');
+  c.style.width=CW+'px'; c.style.height=CH+'px';
+  svg.style.width=CW+'px'; svg.style.height=CH+'px';
+  svg.setAttribute('viewBox',`0 0 ${CW} ${CH}`);
+  try{const bg=localStorage.getItem('lot_bg'); if(bg) aplicarImg(bg);}catch(e){}
+  carregarStorage(); carregarEscalaStorage(); setMode('view');
+  document.getElementById('bgimg').addEventListener('load',()=>{sizarCanvas();render();});
+});
+</script>
+</body>
+</html>
