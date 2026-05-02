@@ -9,7 +9,14 @@
       "PowerShell(gh auth *)",
       "Bash(powershell -command \"\\(Get-Content 'C:\\\\Users\\\\mayco\\\\Downloads\\\\loteamento_v5_1.html'\\).Count\")",
       "Bash(powershell *)",
-      "Bash(start *)"
+      "Bash(start *)",
+      "Bash(Copy-Item *)",
+      "PowerShell(Start-Process \"C:\\\\Users\\\\mayco\\\\Downloads\\\\loteamento_multiselect.html\")",
+      "Bash(dir \"C:\\\\Users\\\\mayco\\\\Downloads\\\\loteamento_multiselect.html\")",
+      "Bash(dir \"C:\\\\Users\\\\mayco\\\\Downloads\\\\Sistema Loteamento\\\\.claude\\\\loteamento_multiselect.html\")",
+      "Bash(Get-Item \"C:\\\\Users\\\\mayco\\\\Downloads\\\\loteamento_multiselect.html\")",
+      "Bash(Select-Object Name, Length, LastWriteTime)",
+      "Bash(Get-Item \"C:\\\\Users\\\\mayco\\\\Downloads\\\\Sistema Loteamento\\\\.claude\\\\loteamento_multiselect.html\")"
     ]
   }
 }
