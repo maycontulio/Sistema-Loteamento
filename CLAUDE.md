@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Sistema Loteamento is a browser-based tool for managing Brazilian land subdivisions (loteamentos). It is a collection of standalone HTML files — no build step, no server, no dependencies. Open any `.html` file directly in a browser.
 
-The HTML files live one level up, in `../` (the Downloads folder). The latest version is `../loteamento_v5_1.html`.
+The HTML files live one level up, in `../` (the Downloads folder). The latest version is `../loteamento_multiselect.html`.
 
 ## Running the App
 
@@ -25,30 +25,31 @@ Each file represents a self-contained iteration:
 | `loteamento_pro.html` | Advanced pre-v2 version |
 | `loteamento_v2.html` → `loteamento_v5_1.html` | Progressive main versions |
 
-**Active development target**: `loteamento_v5_1.html`
+**Active development target**: `loteamento_multiselect.html`
 
 ## Architecture
 
 Each HTML file is fully self-contained (CSS + JS inline, no external JS dependencies).
 
-### Layout Structure (v5+)
+### Layout Structure
 
 ```
-Fixed toolbar (54px, z-index 300)
-├── Mode buttons: Nova Quadra | Editar | Visualizar
-├── Draw controls: Fechar | Cancelar (hidden unless drawing)
+Fixed toolbar (52px, z-index 300)
+├── Mode buttons: ＋ Novo Lote | ⊞ Criar Vários | ✎ Editar | 👁 Visualizar
 ├── Image upload button
+├── 📐 Escala (pixel/meter calibration)
 └── Export: ⬇ JSON | ⬇ HTML | 🗑 Limpar
 
 Scrollable map area (#mw, right edge = sidebar width)
 ├── #canvas (sized to background image, default 1494×842px)
 │   ├── #bgimg (background image, pointer-events:none)
 │   ├── #gridovl (CSS grid overlay, decorative)
-│   └── #svg (SVG layer — all quadras and lotes rendered here)
+│   ├── #svg (SVG layer — all lotes rendered here)
+│   └── #selbox (rubber-band selection rectangle)
 └── #dz (drop zone, shown when no data loaded)
 
-Fixed sidebar (#sb, 320px, right edge)
-├── Quadras list OR Lote detail form (swapped by renderSB())
+Fixed sidebar (#sb, 316px, right edge)
+├── Lote list (grouped by quadra) OR single lote form OR multi-select panel
 └── Stats bar: Disponíveis | Vendidos | Reservados counts
 ```
 
@@ -56,28 +57,28 @@ Fixed sidebar (#sb, 320px, right edge)
 
 ```js
 // Top-level state
-let quadras = [];   // array of Quadra objects
-let mode = 'quadra' | 'edit' | 'view';
-
-// Quadra object
-{
-  id: string,           // "Q1", "Q2", ...
-  nome: string,         // display name, e.g. "Quadra A"
-  pontos: [{x, y}],     // polygon vertices in SVG/canvas coordinates
-  areaTotal: number,    // m²
-  preco: number,        // R$ per lot
-  lotes: [Lote]
-}
+let lotes = [];          // flat array of all Lote objects
+let mode = 'view' | 'edit' | 'create';
+let selId = null;        // single selected lote id
+let selIds = new Set();  // multi-selected lote ids (rubber-band or Shift+click)
+let nextId = 1;          // incrementing id counter
 
 // Lote object
 {
-  id: string,           // "L1", "L2", ...
-  x, y, w, h: number,  // bounding rect in canvas coordinates
+  id: string,            // "l1", "l2", ...
+  quadra: number,        // quadra number (display grouping only)
+  numero: number,        // lot number within quadra
+  tamanho: number,       // m² (user-entered)
+  preco: number,         // R$
   status: 'disponivel' | 'vendido' | 'reservado',
-  area: number,         // m²
-  dimW, dimH: number,   // meters
-  preco: number         // R$
+  x, y: number,          // top-left corner in canvas coordinates (px)
+  w, h: number,          // width and height in canvas pixels
+  angle: number,         // rotation in degrees
 }
+
+// Scale system
+let escalaPxM = 0;       // pixels per meter (0 = no scale calibrated)
+let scaleMeds = [];      // array of {px, m} calibration points
 ```
 
 ### Key Functions
@@ -85,32 +86,39 @@ let mode = 'quadra' | 'edit' | 'view';
 | Function | Role |
 |---|---|
 | `render()` | Redraws entire SVG — call after any state change |
-| `gerarLotes(q, numLotes, areaTotal, preco, status)` | Creates lots grid inside a quadra polygon |
-| `solveGrid(n, bW, bH)` | Finds optimal cols×rows grid for N lots in a bounding box |
-| `criarLoteEl(q, l)` | SVG factory for a single lot element |
-| `renderSB(view, payload)` | Swaps sidebar between quadra list and lot detail |
-| `setMode(m)` | Switches draw/edit/view mode, updates cursor and toolbar |
-| `salvarStorage()` / `carregarStorage()` | Persist/restore `quadras` to `localStorage['lot_v5']` |
-| `expJSON()` | Download `loteamento.json` (raw quadras array) |
+| `criarLoteEl(l)` | SVG factory for a single lot element (rect + event handlers) |
+| `addLabels(g, l)` | Adds number and m² text labels inside a lot's SVG group |
+| `addHandles(g, l)` | Adds resize/rotate handles in edit mode |
+| `renderSB(view, payload)` | Swaps sidebar: `'l'` = single lot form, `'multi'` = batch panel, else lot list |
+| `setMode(m)` | Switches view/edit/create mode, updates cursor and toolbar |
+| `abrirPopup(e, l)` | Shows floating info popup on lot click in view mode |
+| `placeLot(x, y)` | Creates a single new lot at canvas coords and enters edit mode |
+| `criarBulk(cfg)` | Batch-creates a grid of lots from modal config |
+| `abrirModalBulk()` | Opens the "Criar Vários" bulk creation modal |
+| `salvarStorage()` / `carregarStorage()` | Persist/restore `lotes` to `localStorage['lot_man_v1']` |
+| `expJSON()` | Download `loteamento.json` (raw lotes array) |
 | `expHTML()` | Generate and download a standalone read-only viewer HTML |
+| `abrirModalEscala()` | Opens scale calibration dialog |
+| `iniciarMedicao()` | Starts two-point pixel/meter measurement mode |
 
 ### CSS Design System
 
 CSS custom properties on `:root` — always use these, never hardcode colors:
 
 - `--bg / --s1 / --s2 / --s3`: dark navy background layers
-- `--gn / --gna / --gnH / --gns`: green (disponivel)
-- `--rd / --rda / --rdH / --rds`: red (vendido)
-- `--yw / --ywa / --ywH / --yws`: yellow (reservado)
+- `--gn / --gna / --gnh / --gns`: green (disponivel)
+- `--rd / --rda / --rdh / --rds`: red (vendido)
+- `--yw / --ywa / --ywh / --yws`: yellow (reservado)
 - `--ac / --ac2`: blue accent
 - `--tx / --mu / --mu2`: text (main / muted / muted-light)
-- `--tb: 54px` / `--sb: 320px`: toolbar height / sidebar width
+- `--tb: 52px` / `--sb: 316px`: toolbar height / sidebar width
 - `--font: 'Space Grotesk'` / `--mono: 'JetBrains Mono'`
 
 ### Persistence
 
-- `localStorage['lot_v5']` — JSON blob `{quadras, nQId, nLId}`
+- `localStorage['lot_man_v1']` — JSON blob `{lotes, nextId}`
 - `localStorage['lot_bg']` — base64 background image (can be large)
+- `localStorage['lot_scale_v1']` — JSON array of `{px, m}` calibration pairs
 - Export to JSON or self-contained HTML viewer for sharing
 
 ## Lot Status Colors
@@ -121,12 +129,12 @@ CSS custom properties on `:root` — always use these, never hardcode colors:
 | `vendido` | Vendido | `--rd` (red) |
 | `reservado` | Reservado | `--yw` (yellow) |
 
-## Legal Constants (v5)
+## Constants
 
 ```js
-const AREA_MIN  = 125;  // m² — minimum lot area (Brazilian urban parceling law)
-const FRONT_MIN = 10;   // m  — minimum lot frontage
 const CW = 1494, CH = 842;  // default canvas size (px)
+const MIN_W = 18, MIN_H = 14; // minimum lot dimensions (px) for resize handles
+const SNAP_DIST = 7, SNAP_PROX = 90; // snap-to-edge parameters
 ```
 
 ## Supporting Documents
