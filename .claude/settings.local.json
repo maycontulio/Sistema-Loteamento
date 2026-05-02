@@ -6,7 +6,10 @@
       "Bash(gh auth *)",
       "PowerShell(winget install *)",
       "PowerShell(gh *)",
-      "PowerShell(gh auth *)"
+      "PowerShell(gh auth *)",
+      "Bash(powershell -command \"\\(Get-Content 'C:\\\\Users\\\\mayco\\\\Downloads\\\\loteamento_v5_1.html'\\).Count\")",
+      "Bash(powershell *)",
+      "Bash(start *)"
     ]
   }
 }
