@@ -16,7 +16,8 @@
       "Bash(dir \"C:\\\\Users\\\\mayco\\\\Downloads\\\\Sistema Loteamento\\\\.claude\\\\loteamento_multiselect.html\")",
       "Bash(Get-Item \"C:\\\\Users\\\\mayco\\\\Downloads\\\\loteamento_multiselect.html\")",
       "Bash(Select-Object Name, Length, LastWriteTime)",
-      "Bash(Get-Item \"C:\\\\Users\\\\mayco\\\\Downloads\\\\Sistema Loteamento\\\\.claude\\\\loteamento_multiselect.html\")"
+      "Bash(Get-Item \"C:\\\\Users\\\\mayco\\\\Downloads\\\\Sistema Loteamento\\\\.claude\\\\loteamento_multiselect.html\")",
+      "Bash(Start-Process *)"
     ]
   }
 }
