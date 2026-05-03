@@ -291,6 +291,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--b
   <div class="sep"></div>
   <button class="tbtn" id="btn-e" onclick="setMode('edit')">✎ Editar</button>
   <button class="tbtn on" id="btn-v" onclick="setMode('view')">👁 Visualizar</button>
+  <button class="tbtn on" id="btn-snap" onclick="toggleSnap()" title="Snap ativo — alinha bordas automaticamente ao arrastar (clique para desativar)">🧲 Snap</button>
   <div class="sep"></div>
   <label class="tbtn" style="cursor:pointer" title="Carregar imagem de fundo">
     🖼 Imagem
@@ -656,6 +657,7 @@ function bulkSincMetros(idM,idPx){ if(!escalaPxM) return; const m=parseFloat(doc
 //  CONSTANTS
 // ════════════════════════════════════════════════════════════════
 const CW=1494, CH=842, MIN_W=18, MIN_H=14, ROFF=28;
+const SNAP_DIST=8, SNAP_PROX=130;
 const COLORS={
   disponivel:{fill:'rgba(34,197,94,.38)',hover:'rgba(34,197,94,.62)',stroke:'#22c55e'},
   vendido:{fill:'rgba(239,68,68,.38)',hover:'rgba(239,68,68,.62)',stroke:'#ef4444'},
@@ -679,6 +681,9 @@ let projName='';
 // Selection box drag state
 let selBoxDrag=false, selBoxStart=null;
 
+// Snap state
+let snapEnabled=true, snapGuides=[];
+
 // ════════════════════════════════════════════════════════════════
 //  GEOMETRY / SAT
 // ════════════════════════════════════════════════════════════════
@@ -700,6 +705,103 @@ function overlaps(a,b){
   return true;
 }
 function collision(lot,excId){ return lotes.some(o=>!excId.has(o.id)&&overlaps(lot,o)); }
+
+// ════════════════════════════════════════════════════════════════
+//  SNAP SYSTEM
+// ════════════════════════════════════════════════════════════════
+
+/** AABB de qualquer lote (rect rotacionado ou poly) */
+function getAABB(l){
+  const pts=corners(l);
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  return{x:Math.min(...xs),y:Math.min(...ys),r:Math.max(...xs),b:Math.max(...ys)};
+}
+
+/**
+ * Calcula correção de snap para um lote sendo arrastado.
+ * origLot  – estado original do lote (antes do drag corrente)
+ * ddx/ddy  – delta proposto pelo mouse
+ * excludeIds – Set de ids a ignorar (lotes sendo arrastados)
+ * Retorna {dx, dy, guides[]}
+ */
+function computeSnap(origLot, ddx, ddy, excludeIds){
+  if(!snapEnabled) return{dx:ddx,dy:ddy,guides:[]};
+
+  // AABB do lote na posição proposta
+  let proposed;
+  if(origLot.type==='poly'){
+    const npts=origLot.points.map(p=>({x:p.x+ddx,y:p.y+ddy}));
+    proposed={...origLot,points:npts,..._polyBbox(npts)};
+  } else {
+    proposed={...origLot,x:origLot.x+ddx,y:origLot.y+ddy};
+  }
+  const pA=getAABB(proposed);
+
+  let corrX=0,corrY=0,minEX=SNAP_DIST+1,minEY=SNAP_DIST+1;
+  let snapXat=null,snapYat=null,snapXrange=null,snapYrange=null;
+
+  for(const o of lotes){
+    if(excludeIds.has(o.id)) continue;
+    const oA=getAABB(o);
+
+    // Checa proximidade (otimização)
+    const gapX=Math.max(0,Math.max(pA.x,oA.x)-Math.min(pA.r,oA.r));
+    const gapY=Math.max(0,Math.max(pA.y,oA.y)-Math.min(pA.b,oA.b));
+    if(gapX>SNAP_PROX&&gapY>SNAP_PROX) continue;
+
+    // Candidatos X: borda do proposto → borda do vizinho
+    for(const [pe,oe] of [[pA.x,oA.x],[pA.x,oA.r],[pA.r,oA.x],[pA.r,oA.r]]){
+      const e=Math.abs(pe-oe);
+      if(e<minEX){
+        minEX=e;corrX=oe-pe;snapXat=oe;
+        snapXrange=[Math.min(pA.y,oA.y)-12,Math.max(pA.b,oA.b)+12];
+      }
+    }
+    // Candidatos Y
+    for(const [pe,oe] of [[pA.y,oA.y],[pA.y,oA.b],[pA.b,oA.y],[pA.b,oA.b]]){
+      const e=Math.abs(pe-oe);
+      if(e<minEY){
+        minEY=e;corrY=oe-pe;snapYat=oe;
+        snapYrange=[Math.min(pA.x,oA.x)-12,Math.max(pA.r,oA.r)+12];
+      }
+    }
+  }
+
+  const sdx=minEX<=SNAP_DIST?corrX:0;
+  const sdy=minEY<=SNAP_DIST?corrY:0;
+
+  const guides=[];
+  if(sdx!==0&&snapXat!==null)
+    guides.push({type:'v',at:snapXat,y1:snapXrange[0],y2:snapXrange[1]});
+  if(sdy!==0&&snapYat!==null)
+    guides.push({type:'h',at:snapYat,x1:snapYrange[0],x2:snapYrange[1]});
+
+  return{dx:ddx+sdx,dy:ddy+sdy,guides};
+}
+
+/**
+ * Snap de vértice individual: busca o vértice mais próximo de qualquer outro lote.
+ * Usado nos handles de poly.
+ */
+function snapVertex(vx,vy,excludeLotId){
+  if(!snapEnabled) return{x:vx,y:vy,snapped:false};
+  let bx=vx,by=vy,minD=SNAP_DIST+1;
+  for(const o of lotes){
+    if(o.id===excludeLotId) continue;
+    for(const p of corners(o)){
+      const d=Math.hypot(vx-p.x,vy-p.y);
+      if(d<minD){minD=d;bx=p.x;by=p.y;}
+    }
+  }
+  return{x:bx,y:by,snapped:minD<=SNAP_DIST};
+}
+
+function toggleSnap(){
+  snapEnabled=!snapEnabled;
+  const btn=document.getElementById('btn-snap');
+  if(btn) btn.classList.toggle('on',snapEnabled);
+  notif(snapEnabled?'🧲 Snap ativado':'Snap desativado','inf');
+}
 
 // ════════════════════════════════════════════════════════════════
 //  SVG HELPERS
@@ -847,23 +949,41 @@ function render(){
     dragRect.addEventListener('mousedown',e=>{
       e.stopPropagation(); e.preventDefault();
       const sm=svgPt(e);
-      const origPos=lotes.filter(l=>selIds.has(l.id)).map(l=>({id:l.id,x:l.x,y:l.y}));
+      const origPos=lotes.filter(l=>selIds.has(l.id)).map(l=>({id:l.id,x:l.x,y:l.y,points:l.points?l.points.map(p=>({...p})):null}));
+      // AABB do grupo na posição original (virtual rect para snap)
+      let gx0=Infinity,gy0=Infinity,gx1=-Infinity,gy1=-Infinity;
+      lotes.filter(l=>selIds.has(l.id)).forEach(l=>{const a=getAABB(l);gx0=Math.min(gx0,a.x);gy0=Math.min(gy0,a.y);gx1=Math.max(gx1,a.r);gy1=Math.max(gy1,a.b);});
+      const groupVirt={id:'__grp__',x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0,angle:0};
       const mm=ev=>{
         const cur=svgPt(ev);
-        const dx=cur.x-sm.x, dy=cur.y-sm.y;
-        const excIds=new Set(selIds);
-        const snaps=origPos.map(o=>({...lotes.find(l=>l.id===o.id),x:o.x+dx,y:o.y+dy}));
+        const rawDx=cur.x-sm.x, rawDy=cur.y-sm.y;
+        const sn=computeSnap(groupVirt,rawDx,rawDy,new Set(selIds));
+        const ddx=sn.dx, ddy=sn.dy;
+        const snaps=origPos.map(o=>{const lot=lotes.find(l=>l.id===o.id);return{...lot,x:o.x+ddx,y:o.y+ddy};});
         const ok=snaps.every(snap=>!lotes.some(o=>!selIds.has(o.id)&&overlaps(snap,o)));
-        if(ok){ origPos.forEach(o=>{ const l=lotes.find(l=>l.id===o.id); if(l){l.x=o.x+dx;l.y=o.y+dy;} }); }
-        render();
+        if(ok){ origPos.forEach(o=>{ const l=lotes.find(l=>l.id===o.id); if(l){l.x=o.x+ddx;l.y=o.y+ddy;} }); }
+        snapGuides=sn.guides; render();
       };
-      const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); salvarStorage(); };
+      const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); snapGuides=[];salvarStorage();render(); };
       window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
     });
     gH.appendChild(dragRect);
   }
 
   svg.appendChild(gL); svg.appendChild(gLb); svg.appendChild(gH);
+
+  // Guias visuais de snap
+  if(snapGuides.length&&mode==='edit'){
+    const gSnap=mk('g');
+    snapGuides.forEach(g=>{
+      const line=g.type==='v'
+        ?at(mk('line'),{x1:g.at,y1:g.y1,x2:g.at,y2:g.y2,stroke:'rgba(79,156,249,.9)','stroke-width':'1.5','stroke-dasharray':'5 3','pointer-events':'none'})
+        :at(mk('line'),{x1:g.x1,y1:g.at,x2:g.x2,y2:g.at,stroke:'rgba(79,156,249,.9)','stroke-width':'1.5','stroke-dasharray':'5 3','pointer-events':'none'});
+      gSnap.appendChild(line);
+    });
+    svg.appendChild(gSnap);
+  }
+
   atualizarStats();
 }
 
@@ -912,13 +1032,18 @@ function criarLoteEl(l){
       e.stopPropagation(); e.preventDefault();
       if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; }
       const sm=svgPt(e), origPts=l.points.map(p=>({...p}));
+      const origBboxPoly=_polyBbox(origPts);
       const mm=ev=>{
-        const c=svgPt(ev),dx=c.x-sm.x,dy=c.y-sm.y;
-        const npts=origPts.map(p=>({x:p.x+dx,y:p.y+dy}));
+        const c=svgPt(ev);
+        const rawDx=c.x-sm.x, rawDy=c.y-sm.y;
+        const origForSnap={...l,type:'poly',points:origPts,...origBboxPoly};
+        const sn=computeSnap(origForSnap,rawDx,rawDy,new Set([l.id]));
+        const npts=origPts.map(p=>({x:p.x+sn.dx,y:p.y+sn.dy}));
         const trial={...l,points:npts,..._polyBbox(npts)};
-        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));render();}
+        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));}
+        snapGuides=sn.guides; render();
       };
-      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);salvarStorage();};
+      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);snapGuides=[];salvarStorage();render();};
       window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
     });
     g.appendChild(shape);
@@ -945,12 +1070,16 @@ function criarLoteEl(l){
     e.stopPropagation(); e.preventDefault();
     if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; }
     const sm=svgPt(e), ox=l.x, oy=l.y;
+    const origLotRect={...l,x:ox,y:oy};
     const mm=ev=>{
       const cur=svgPt(ev);
-      const trial={...l,x:ox+cur.x-sm.x,y:oy+cur.y-sm.y};
-      if(!collision(trial,new Set([l.id]))){ l.x=trial.x; l.y=trial.y; render(); }
+      const rawDx=cur.x-sm.x, rawDy=cur.y-sm.y;
+      const sn=computeSnap(origLotRect,rawDx,rawDy,new Set([l.id]));
+      const trial={...l,x:ox+sn.dx,y:oy+sn.dy};
+      if(!collision(trial,new Set([l.id]))){ l.x=trial.x; l.y=trial.y; }
+      snapGuides=sn.guides; render();
     };
-    const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);salvarStorage();};
+    const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);snapGuides=[];salvarStorage();render();};
     window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
   });
   g.appendChild(rect);
@@ -1064,11 +1193,16 @@ function addPolyHandles(g,l){
       const sm=svgPt(e),ox=pt.x,oy=pt.y;
       const mm=ev=>{
         const c=svgPt(ev);
-        const npts=l.points.map((p,j)=>j===i?{x:ox+c.x-sm.x,y:oy+c.y-sm.y}:p);
+        let vx=ox+c.x-sm.x, vy=oy+c.y-sm.y;
+        const sv=snapVertex(vx,vy,l.id);
+        vx=sv.x; vy=sv.y;
+        const npts=l.points.map((p,j)=>j===i?{x:vx,y:vy}:p);
         const trial={...l,points:npts,..._polyBbox(npts)};
-        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));render();}
+        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));}
+        snapGuides=sv.snapped?[{type:'v',at:vx,y1:vy-20,y2:vy+20},{type:'h',at:vy,x1:vx-20,x2:vx+20}]:[];
+        render();
       };
-      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);salvarStorage();};
+      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);snapGuides=[];salvarStorage();render();};
       window.addEventListener('mousemove',mm);window.addEventListener('mouseup',mu);
     });
     g.appendChild(h);
