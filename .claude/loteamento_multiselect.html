@@ -248,6 +248,38 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--b
 /* Multi-select rotation handle (orange) */
 .msel-rotate-line{position:absolute;background:rgba(251,146,60,.6);height:2px;transform-origin:left center;pointer-events:none;z-index:54}
 
+/* ─── VIEW OVERLAY (filtro+legenda flutuante) ──────────── */
+#view-overlay{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  z-index:200;display:none;align-items:center;gap:6px;
+  background:rgba(8,12,20,.22);border:none;
+  border-radius:99px;padding:7px 14px;
+  backdrop-filter:blur(10px);
+}
+.vf-f{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:99px;border:1px solid transparent;
+  background:transparent;color:var(--mu);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;font-family:var(--font);letter-spacing:.03em;
+  white-space:nowrap;
+}
+.vf-f:hover{color:var(--tx)}
+.vf-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;opacity:.45;transition:opacity .15s}
+.vf-f.on-d{color:#4ade80;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08)}
+.vf-f.on-d .vf-dot{opacity:1}
+.vf-f.on-v{color:#f87171;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.vf-f.on-v .vf-dot{opacity:1}
+.vf-f.on-r{color:#fde047;border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08)}
+.vf-f.on-r .vf-dot{opacity:1}
+.vf-sep{width:1px;height:16px;background:rgba(99,130,201,.2);flex-shrink:0}
+.vf-all{
+  padding:5px 12px;border-radius:99px;border:1px solid transparent;
+  background:transparent;color:var(--mu);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;font-family:var(--font);
+}
+.vf-all:hover{color:var(--tx)}
+.vf-all.on{color:var(--ac2);border-color:rgba(79,156,249,.3);background:rgba(79,156,249,.08)}
+
 /* ─── PROJECT MANAGER ─────────────────────────────────── */
 #pm-modal{
   background:var(--s1);border:1px solid var(--bd2);border-radius:16px;
@@ -291,7 +323,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--b
   <div class="sep"></div>
   <button class="tbtn" id="btn-e" onclick="setMode('edit')">✎ Editar</button>
   <button class="tbtn on" id="btn-v" onclick="setMode('view')">👁 Visualizar</button>
-  <button class="tbtn on" id="btn-snap" onclick="toggleSnap()" title="Snap ativo — alinha bordas automaticamente ao arrastar (clique para desativar)">🧲 Snap</button>
   <div class="sep"></div>
   <label class="tbtn" style="cursor:pointer" title="Carregar imagem de fundo">
     🖼 Imagem
@@ -299,6 +330,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--b
   </label>
   <div class="sep"></div>
   <button class="tbtn" id="btn-escala" onclick="abrirModalEscala()" title="Calibrar escala pixel/metro">📐 Escala</button>
+  <button class="tbtn" id="btn-rua" onclick="iniciarRua()" title="Adicionar nome de rua ao mapa">🛣 Ruas</button>
   <div class="sep"></div>
   <button class="tbtn ok"     onclick="expJSON()">⬇ JSON</button>
   <button class="tbtn ok"     onclick="expHTML()">⬇ HTML</button>
@@ -452,6 +484,30 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--b
   </div>
 </div>
 
+<!-- ═══ MODAL: RUAS ════════════════════════════════════════ -->
+<div id="rua-bg" style="position:fixed;inset:0;z-index:410;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)">
+  <div style="background:var(--s1);border:1px solid var(--bd2);border-radius:16px;padding:26px 28px;width:400px;max-width:93vw;box-shadow:0 50px 100px rgba(0,0,0,.9)">
+    <h2 style="font-size:15px;font-weight:700;margin-bottom:14px">🛣 Nome da Rua</h2>
+    <div style="background:rgba(79,156,249,.07);border:1px solid rgba(79,156,249,.2);border-radius:8px;padding:10px 13px;font-size:11px;color:var(--ac);line-height:1.8;margin-bottom:14px">
+      Digite o nome e clique em <b>Posicionar</b>.<br>Depois clique no mapa para colocar o texto.
+    </div>
+    <div class="fg"><label class="fl">Nome da Rua</label>
+      <input class="fi" id="rua-nome" type="text" placeholder="Ex: Rua das Flores"
+        style="font-size:14px" onkeydown="if(event.key==='Enter')confirmarRua()"/></div>
+    <div class="fr2" style="margin-top:4px">
+      <div class="fg"><label class="fl">Tamanho (px)</label>
+        <input class="fi" id="rua-fs" type="number" min="8" max="72" value="16"/></div>
+      <div class="fg"><label class="fl">Cor</label>
+        <input class="fi" id="rua-cor" type="color" value="#ffffff"
+          style="height:38px;padding:3px 6px;cursor:pointer"/></div>
+    </div>
+    <div class="mac">
+      <button class="btn btn-p" onclick="confirmarRua()">📍 Posicionar no Mapa</button>
+      <button class="btn btn-d" onclick="cancelarRua()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ POPUP ══════════════════════════════════════════════ -->
 <div id="popup">
   <button id="px">✕</button>
@@ -468,6 +524,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--b
   <div class="pop-r"><span class="pop-l">Preço</span><span class="pop-v ac" id="pop-preco"></span></div>
   <div class="pop-r"><span class="pop-l">Status</span><span class="pop-v" id="pop-status"></span></div>
 </div>
+<div id="view-overlay"></div>
 <div id="notif"></div>
 
 <script>
@@ -657,13 +714,113 @@ function bulkSincMetros(idM,idPx){ if(!escalaPxM) return; const m=parseFloat(doc
 //  CONSTANTS
 // ════════════════════════════════════════════════════════════════
 const CW=1494, CH=842, MIN_W=18, MIN_H=14, ROFF=28;
-const SNAP_DIST=8, SNAP_PROX=130;
 const COLORS={
   disponivel:{fill:'rgba(34,197,94,.38)',hover:'rgba(34,197,94,.62)',stroke:'#22c55e'},
   vendido:{fill:'rgba(239,68,68,.38)',hover:'rgba(239,68,68,.62)',stroke:'#ef4444'},
   reservado:{fill:'rgba(245,158,11,.38)',hover:'rgba(245,158,11,.62)',stroke:'#f59e0b'},
 };
 const STA={disponivel:'Disponível',vendido:'Vendido',reservado:'Reservado'};
+
+// ════════════════════════════════════════════════════════════════
+//  SNAP SYSTEM
+// ════════════════════════════════════════════════════════════════
+const SNAP_T=8, SNAP_PROX=200;
+let _snapState={snapSegs:[]};
+
+function _lotAABB(l){const cs=corners(l);return{left:Math.min(...cs.map(p=>p.x)),right:Math.max(...cs.map(p=>p.x)),top:Math.min(...cs.map(p=>p.y)),bottom:Math.max(...cs.map(p=>p.y))};}
+
+function calcSnap(trialLot,excIds){
+  const ta=_lotAABB(trialLot);
+  let bdx=SNAP_T+1,bdy=SNAP_T+1,sdx=0,sdy=0;
+  const lxSet=new Set(),lySet=new Set();
+  for(const other of lotes){
+    if(excIds.has(other.id)) continue;
+    const oa=_lotAABB(other);
+    const nearH=ta.left<oa.right+SNAP_PROX&&ta.right>oa.left-SNAP_PROX;
+    const nearV=ta.top<oa.bottom+SNAP_PROX&&ta.bottom>oa.top-SNAP_PROX;
+    if(!nearH&&!nearV) continue;
+    for(const [te,oe] of [[ta.left,oa.left],[ta.right,oa.right],[ta.left,oa.right],[ta.right,oa.left]]){
+      const d=oe-te;
+      if(Math.abs(d)<bdx){bdx=Math.abs(d);sdx=d;lxSet.clear();lxSet.add(oe);}
+      else if(Math.abs(d)===bdx&&d===sdx) lxSet.add(oe);
+    }
+    for(const [te,oe] of [[ta.top,oa.top],[ta.bottom,oa.bottom],[ta.top,oa.bottom],[ta.bottom,oa.top]]){
+      const d=oe-te;
+      if(Math.abs(d)<bdy){bdy=Math.abs(d);sdy=d;lySet.clear();lySet.add(oe);}
+      else if(Math.abs(d)===bdy&&d===sdy) lySet.add(oe);
+    }
+  }
+  const snapSegs=[];
+  if(bdx<=SNAP_T)[...lxSet].forEach(x=>snapSegs.push({x1:x,y1:-5000,x2:x,y2:9999}));
+  if(bdy<=SNAP_T)[...lySet].forEach(y=>snapSegs.push({x1:-5000,y1:y,x2:9999,y2:y}));
+  return{dx:bdx<=SNAP_T?sdx:0,dy:bdy<=SNAP_T?sdy:0,snapSegs};
+}
+
+function calcGroupSnap(trialLots,excIds){
+  if(!trialLots.length) return{dx:0,dy:0,snapSegs:[]};
+  let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
+  trialLots.forEach(l=>{const a=_lotAABB(l);left=Math.min(left,a.left);right=Math.max(right,a.right);top=Math.min(top,a.top);bottom=Math.max(bottom,a.bottom);});
+  return calcSnap({x:left,y:top,w:right-left,h:bottom-top,angle:0},excIds);
+}
+
+function setSnapLines(r){_snapState={snapSegs:r.snapSegs||[]};}
+function clearSnapLines(){_snapState={snapSegs:[]};}
+
+// ════════════════════════════════════════════════════════════════
+//  EDGE-AWARE SNAP
+// ════════════════════════════════════════════════════════════════
+function _lotEdges(l){
+  const cs=corners(l),n=cs.length;
+  return cs.map((p,i)=>{
+    const q=cs[(i+1)%n],dx=q.x-p.x,dy=q.y-p.y,len=Math.hypot(dx,dy);
+    if(len<0.5)return null;
+    return{p1:p,p2:q,dir:{x:dx/len,y:dy/len},normal:{x:-dy/len,y:dx/len},
+      mid:{x:(p.x+q.x)/2,y:(p.y+q.y)/2},len};
+  }).filter(Boolean);
+}
+
+function calcEdgeSnap(trialLot,excIds){
+  const myEdges=_lotEdges(trialLot);
+  const ta=_lotAABB(trialLot);
+  const candidates=[];
+  for(const other of lotes){
+    if(excIds.has(other.id))continue;
+    const oa=_lotAABB(other);
+    if(ta.left>oa.right+SNAP_PROX||ta.right<oa.left-SNAP_PROX)continue;
+    if(ta.top>oa.bottom+SNAP_PROX||ta.bottom<oa.top-SNAP_PROX)continue;
+    const otherEdges=_lotEdges(other);
+    for(const me of myEdges){
+      for(const oe of otherEdges){
+        // Check parallel edges (dot product of directions ≥ 0.97, ~14°)
+        const dot=Math.abs(me.dir.x*oe.dir.x+me.dir.y*oe.dir.y);
+        if(dot<0.97)continue;
+        // Perpendicular distance from my edge line to other edge line
+        const dpx=oe.mid.x-me.mid.x,dpy=oe.mid.y-me.mid.y;
+        const perp=dpx*me.normal.x+dpy*me.normal.y;
+        if(Math.abs(perp)>=SNAP_T)continue;
+        // Canonicalize normal for grouping (same axis = same key)
+        let cnx=me.normal.x,cny=me.normal.y;
+        if(cnx<-0.01||(Math.abs(cnx)<0.01&&cny<0)){cnx=-cnx;cny=-cny;}
+        const normKey=cnx.toFixed(2)+','+cny.toFixed(2);
+        const ext=4000;
+        const sl={x1:oe.mid.x-oe.dir.x*ext,y1:oe.mid.y-oe.dir.y*ext,
+                   x2:oe.mid.x+oe.dir.x*ext,y2:oe.mid.y+oe.dir.y*ext};
+        candidates.push({ddx:perp*me.normal.x,ddy:perp*me.normal.y,
+          absPerp:Math.abs(perp),normKey,sl});
+      }
+    }
+  }
+  if(!candidates.length)return{dx:0,dy:0,snapSegs:[]};
+  // Per axis: keep only the best (smallest) snap candidate
+  const byNorm=new Map();
+  for(const c of candidates){
+    if(!byNorm.has(c.normKey)||byNorm.get(c.normKey).absPerp>c.absPerp)
+      byNorm.set(c.normKey,c);
+  }
+  let dx=0,dy=0;const snapSegs=[];
+  for(const c of byNorm.values()){dx+=c.ddx;dy+=c.ddy;snapSegs.push(c.sl);}
+  return{dx,dy,snapSegs};
+}
 
 // ════════════════════════════════════════════════════════════════
 //  STATE
@@ -678,11 +835,17 @@ let lotConfig=null;  // config waiting to be placed on map
 let projId=null;
 let projName='';
 
+// Ruas (street labels)
+let ruas=[];
+let nextRuaId=1;
+let ruaConfig=null;
+let selRuaId=null;
+
+// View mode filter
+let filterStatus=new Set(['disponivel','vendido','reservado']);
+
 // Selection box drag state
 let selBoxDrag=false, selBoxStart=null;
-
-// Snap state
-let snapEnabled=true, snapGuides=[];
 
 // ════════════════════════════════════════════════════════════════
 //  GEOMETRY / SAT
@@ -705,103 +868,6 @@ function overlaps(a,b){
   return true;
 }
 function collision(lot,excId){ return lotes.some(o=>!excId.has(o.id)&&overlaps(lot,o)); }
-
-// ════════════════════════════════════════════════════════════════
-//  SNAP SYSTEM
-// ════════════════════════════════════════════════════════════════
-
-/** AABB de qualquer lote (rect rotacionado ou poly) */
-function getAABB(l){
-  const pts=corners(l);
-  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
-  return{x:Math.min(...xs),y:Math.min(...ys),r:Math.max(...xs),b:Math.max(...ys)};
-}
-
-/**
- * Calcula correção de snap para um lote sendo arrastado.
- * origLot  – estado original do lote (antes do drag corrente)
- * ddx/ddy  – delta proposto pelo mouse
- * excludeIds – Set de ids a ignorar (lotes sendo arrastados)
- * Retorna {dx, dy, guides[]}
- */
-function computeSnap(origLot, ddx, ddy, excludeIds){
-  if(!snapEnabled) return{dx:ddx,dy:ddy,guides:[]};
-
-  // AABB do lote na posição proposta
-  let proposed;
-  if(origLot.type==='poly'){
-    const npts=origLot.points.map(p=>({x:p.x+ddx,y:p.y+ddy}));
-    proposed={...origLot,points:npts,..._polyBbox(npts)};
-  } else {
-    proposed={...origLot,x:origLot.x+ddx,y:origLot.y+ddy};
-  }
-  const pA=getAABB(proposed);
-
-  let corrX=0,corrY=0,minEX=SNAP_DIST+1,minEY=SNAP_DIST+1;
-  let snapXat=null,snapYat=null,snapXrange=null,snapYrange=null;
-
-  for(const o of lotes){
-    if(excludeIds.has(o.id)) continue;
-    const oA=getAABB(o);
-
-    // Checa proximidade (otimização)
-    const gapX=Math.max(0,Math.max(pA.x,oA.x)-Math.min(pA.r,oA.r));
-    const gapY=Math.max(0,Math.max(pA.y,oA.y)-Math.min(pA.b,oA.b));
-    if(gapX>SNAP_PROX&&gapY>SNAP_PROX) continue;
-
-    // Candidatos X: borda do proposto → borda do vizinho
-    for(const [pe,oe] of [[pA.x,oA.x],[pA.x,oA.r],[pA.r,oA.x],[pA.r,oA.r]]){
-      const e=Math.abs(pe-oe);
-      if(e<minEX){
-        minEX=e;corrX=oe-pe;snapXat=oe;
-        snapXrange=[Math.min(pA.y,oA.y)-12,Math.max(pA.b,oA.b)+12];
-      }
-    }
-    // Candidatos Y
-    for(const [pe,oe] of [[pA.y,oA.y],[pA.y,oA.b],[pA.b,oA.y],[pA.b,oA.b]]){
-      const e=Math.abs(pe-oe);
-      if(e<minEY){
-        minEY=e;corrY=oe-pe;snapYat=oe;
-        snapYrange=[Math.min(pA.x,oA.x)-12,Math.max(pA.r,oA.r)+12];
-      }
-    }
-  }
-
-  const sdx=minEX<=SNAP_DIST?corrX:0;
-  const sdy=minEY<=SNAP_DIST?corrY:0;
-
-  const guides=[];
-  if(sdx!==0&&snapXat!==null)
-    guides.push({type:'v',at:snapXat,y1:snapXrange[0],y2:snapXrange[1]});
-  if(sdy!==0&&snapYat!==null)
-    guides.push({type:'h',at:snapYat,x1:snapYrange[0],x2:snapYrange[1]});
-
-  return{dx:ddx+sdx,dy:ddy+sdy,guides};
-}
-
-/**
- * Snap de vértice individual: busca o vértice mais próximo de qualquer outro lote.
- * Usado nos handles de poly.
- */
-function snapVertex(vx,vy,excludeLotId){
-  if(!snapEnabled) return{x:vx,y:vy,snapped:false};
-  let bx=vx,by=vy,minD=SNAP_DIST+1;
-  for(const o of lotes){
-    if(o.id===excludeLotId) continue;
-    for(const p of corners(o)){
-      const d=Math.hypot(vx-p.x,vy-p.y);
-      if(d<minD){minD=d;bx=p.x;by=p.y;}
-    }
-  }
-  return{x:bx,y:by,snapped:minD<=SNAP_DIST};
-}
-
-function toggleSnap(){
-  snapEnabled=!snapEnabled;
-  const btn=document.getElementById('btn-snap');
-  if(btn) btn.classList.toggle('on',snapEnabled);
-  notif(snapEnabled?'🧲 Snap ativado':'Snap desativado','inf');
-}
 
 // ════════════════════════════════════════════════════════════════
 //  SVG HELPERS
@@ -914,6 +980,7 @@ function render(){
   const gL=mk('g'), gLb=mk('g'), gH=mk('g');
 
   lotes.forEach(l=>{
+    if(mode==='view'&&!filterStatus.has(l.status)) return;
     gL.appendChild(criarLoteEl(l));
     addLabels(gLb,l);
     if(mode==='edit'&&selId===l.id&&selIds.size===0) addHandles(gH,l);
@@ -949,41 +1016,36 @@ function render(){
     dragRect.addEventListener('mousedown',e=>{
       e.stopPropagation(); e.preventDefault();
       const sm=svgPt(e);
-      const origPos=lotes.filter(l=>selIds.has(l.id)).map(l=>({id:l.id,x:l.x,y:l.y,points:l.points?l.points.map(p=>({...p})):null}));
-      // AABB do grupo na posição original (virtual rect para snap)
-      let gx0=Infinity,gy0=Infinity,gx1=-Infinity,gy1=-Infinity;
-      lotes.filter(l=>selIds.has(l.id)).forEach(l=>{const a=getAABB(l);gx0=Math.min(gx0,a.x);gy0=Math.min(gy0,a.y);gx1=Math.max(gx1,a.r);gy1=Math.max(gy1,a.b);});
-      const groupVirt={id:'__grp__',x:gx0,y:gy0,w:gx1-gx0,h:gy1-gy0,angle:0};
+      const origPos=lotes.filter(l=>selIds.has(l.id)).map(l=>({id:l.id,x:l.x,y:l.y}));
       const mm=ev=>{
         const cur=svgPt(ev);
-        const rawDx=cur.x-sm.x, rawDy=cur.y-sm.y;
-        const sn=computeSnap(groupVirt,rawDx,rawDy,new Set(selIds));
-        const ddx=sn.dx, ddy=sn.dy;
-        const snaps=origPos.map(o=>{const lot=lotes.find(l=>l.id===o.id);return{...lot,x:o.x+ddx,y:o.y+ddy};});
-        const ok=snaps.every(snap=>!lotes.some(o=>!selIds.has(o.id)&&overlaps(snap,o)));
-        if(ok){ origPos.forEach(o=>{ const l=lotes.find(l=>l.id===o.id); if(l){l.x=o.x+ddx;l.y=o.y+ddy;} }); }
-        snapGuides=sn.guides; render();
+        const dx=cur.x-sm.x, dy=cur.y-sm.y;
+        const excIds=new Set(selIds);
+        const trialLots=origPos.map(o=>({...lotes.find(l=>l.id===o.id),x:o.x+dx,y:o.y+dy}));
+        const snap=calcGroupSnap(trialLots,excIds);
+        const sdx=dx+snap.dx,sdy=dy+snap.dy;
+        const finalLots=origPos.map(o=>({...lotes.find(l=>l.id===o.id),x:o.x+sdx,y:o.y+sdy}));
+        const ok=finalLots.every(s=>!lotes.some(o=>!selIds.has(o.id)&&overlaps(s,o)));
+        if(ok){origPos.forEach(o=>{const l=lotes.find(l=>l.id===o.id);if(l){l.x=o.x+sdx;l.y=o.y+sdy;}});setSnapLines(snap);}
+        else{
+          const ok2=trialLots.every(s=>!lotes.some(o=>!selIds.has(o.id)&&overlaps(s,o)));
+          if(ok2){origPos.forEach(o=>{const l=lotes.find(l=>l.id===o.id);if(l){l.x=o.x+dx;l.y=o.y+dy;}});clearSnapLines();}
+        }
+        render();
       };
-      const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); snapGuides=[];salvarStorage();render(); };
+      const mu=()=>{ window.removeEventListener('mousemove',mm); window.removeEventListener('mouseup',mu); clearSnapLines();render();salvarStorage(); };
       window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
     });
     gH.appendChild(dragRect);
   }
 
   svg.appendChild(gL); svg.appendChild(gLb); svg.appendChild(gH);
-
-  // Guias visuais de snap
-  if(snapGuides.length&&mode==='edit'){
+  renderRuasNoSVG(svg);
+  if(_snapState.snapSegs&&_snapState.snapSegs.length){
     const gSnap=mk('g');
-    snapGuides.forEach(g=>{
-      const line=g.type==='v'
-        ?at(mk('line'),{x1:g.at,y1:g.y1,x2:g.at,y2:g.y2,stroke:'rgba(79,156,249,.9)','stroke-width':'1.5','stroke-dasharray':'5 3','pointer-events':'none'})
-        :at(mk('line'),{x1:g.x1,y1:g.at,x2:g.x2,y2:g.at,stroke:'rgba(79,156,249,.9)','stroke-width':'1.5','stroke-dasharray':'5 3','pointer-events':'none'});
-      gSnap.appendChild(line);
-    });
+    _snapState.snapSegs.forEach(s=>gSnap.appendChild(at(mk('line'),{x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2,stroke:'rgba(56,189,248,.85)','stroke-width':'1.5','stroke-dasharray':'6 3','pointer-events':'none'})));
     svg.appendChild(gSnap);
   }
-
   atualizarStats();
 }
 
@@ -1030,20 +1092,21 @@ function criarLoteEl(l){
       if(mode!=='edit') return;
       if(selIds.has(l.id)&&selIds.size>1) return;
       e.stopPropagation(); e.preventDefault();
-      if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; }
+      if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; render(); renderSB('l',l.id); }
       const sm=svgPt(e), origPts=l.points.map(p=>({...p}));
-      const origBboxPoly=_polyBbox(origPts);
       const mm=ev=>{
-        const c=svgPt(ev);
-        const rawDx=c.x-sm.x, rawDy=c.y-sm.y;
-        const origForSnap={...l,type:'poly',points:origPts,...origBboxPoly};
-        const sn=computeSnap(origForSnap,rawDx,rawDy,new Set([l.id]));
-        const npts=origPts.map(p=>({x:p.x+sn.dx,y:p.y+sn.dy}));
-        const trial={...l,points:npts,..._polyBbox(npts)};
-        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));}
-        snapGuides=sn.guides; render();
+        const c=svgPt(ev),dx=c.x-sm.x,dy=c.y-sm.y;
+        const excSet=new Set([l.id]);
+        const npts=origPts.map(p=>({x:p.x+dx,y:p.y+dy}));
+        const raw={...l,points:npts,..._polyBbox(npts)};
+        const snap=calcEdgeSnap(raw,excSet);
+        const spts=npts.map(p=>({x:p.x+snap.dx,y:p.y+snap.dy}));
+        const snp={...l,points:spts,..._polyBbox(spts)};
+        if(!collision(snp,excSet)){l.points=spts;Object.assign(l,_polyBbox(spts));setSnapLines(snap);}
+        else if(!collision(raw,excSet)){l.points=npts;Object.assign(l,_polyBbox(npts));clearSnapLines();}
+        render();
       };
-      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);snapGuides=[];salvarStorage();render();};
+      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);clearSnapLines();render();salvarStorage();if(selId===l.id&&selIds.size===0)renderSB('l',l.id);};
       window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
     });
     g.appendChild(shape);
@@ -1068,18 +1131,19 @@ function criarLoteEl(l){
     if(mode!=='edit') return;
     if(selIds.has(l.id)&&selIds.size>1) return;
     e.stopPropagation(); e.preventDefault();
-    if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; }
+    if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ selIds.clear(); selId=l.id; render(); renderSB('l',l.id); }
     const sm=svgPt(e), ox=l.x, oy=l.y;
-    const origLotRect={...l,x:ox,y:oy};
     const mm=ev=>{
       const cur=svgPt(ev);
-      const rawDx=cur.x-sm.x, rawDy=cur.y-sm.y;
-      const sn=computeSnap(origLotRect,rawDx,rawDy,new Set([l.id]));
-      const trial={...l,x:ox+sn.dx,y:oy+sn.dy};
-      if(!collision(trial,new Set([l.id]))){ l.x=trial.x; l.y=trial.y; }
-      snapGuides=sn.guides; render();
+      const excSet=new Set([l.id]);
+      const raw={...l,x:ox+cur.x-sm.x,y:oy+cur.y-sm.y};
+      const snap=calcEdgeSnap(raw,excSet);
+      const snp={...l,x:raw.x+snap.dx,y:raw.y+snap.dy};
+      if(!collision(snp,excSet)){l.x=snp.x;l.y=snp.y;setSnapLines(snap);}
+      else if(!collision(raw,excSet)){l.x=raw.x;l.y=raw.y;clearSnapLines();}
+      render();
     };
-    const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);snapGuides=[];salvarStorage();render();};
+    const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);clearSnapLines();render();salvarStorage();if(selId===l.id&&selIds.size===0)renderSB('l',l.id);};
     window.addEventListener('mousemove',mm); window.addEventListener('mouseup',mu);
   });
   g.appendChild(rect);
@@ -1193,16 +1257,11 @@ function addPolyHandles(g,l){
       const sm=svgPt(e),ox=pt.x,oy=pt.y;
       const mm=ev=>{
         const c=svgPt(ev);
-        let vx=ox+c.x-sm.x, vy=oy+c.y-sm.y;
-        const sv=snapVertex(vx,vy,l.id);
-        vx=sv.x; vy=sv.y;
-        const npts=l.points.map((p,j)=>j===i?{x:vx,y:vy}:p);
+        const npts=l.points.map((p,j)=>j===i?{x:ox+c.x-sm.x,y:oy+c.y-sm.y}:p);
         const trial={...l,points:npts,..._polyBbox(npts)};
-        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));}
-        snapGuides=sv.snapped?[{type:'v',at:vx,y1:vy-20,y2:vy+20},{type:'h',at:vy,x1:vx-20,x2:vx+20}]:[];
-        render();
+        if(!collision(trial,new Set([l.id]))){l.points=npts;Object.assign(l,_polyBbox(npts));render();}
       };
-      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);snapGuides=[];salvarStorage();render();};
+      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);salvarStorage();};
       window.addEventListener('mousemove',mm);window.addEventListener('mouseup',mu);
     });
     g.appendChild(h);
@@ -1267,24 +1326,29 @@ document.addEventListener('mouseup',e=>{ endSelBox(e); });
 
 document.getElementById('mw').addEventListener('click',e=>{
   if(scaleMode){ handleScaleClick(e); return; }
-  if(mode==='create'){ const pt=svgPt(e); placeLotFromForm(pt.x,pt.y); }
+  if(mode==='create'){
+    const pt=svgPt(e);
+    if(ruaConfig) placeRua(pt.x,pt.y);
+    else placeLotFromForm(pt.x,pt.y);
+  }
 });
 
 document.getElementById('canvas').addEventListener('click',e=>{
   if(['canvas','bgimg','gridovl'].includes(e.target.id)&&mode==='edit'){
-    selId=null; selIds.clear(); render(); renderSB();
+    selId=null; selIds.clear(); selRuaId=null; render(); renderSB();
   }
 });
 
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(scaleMode){_miniCancel();return;}
+    if(mode==='create'&&ruaConfig){ruaConfig=null;document.getElementById('btn-rua').classList.remove('on');setMode('edit');return;}
     if(mode==='create'){lotConfig=null;setMode('edit');return;}
-    if(mode==='create') setMode('edit');
-    else if(mode==='edit'){ selId=null; selIds.clear(); render(); renderSB(); }
+    else if(mode==='edit'){ selId=null; selIds.clear(); selRuaId=null; render(); renderSB(); }
   }
   if((e.key==='Delete'||e.key==='Backspace')&&mode==='edit'){
     if(document.activeElement?.tagName==='INPUT') return;
+    if(selRuaId){ deletarRua(selRuaId); return; }
     if(selIds.size>1){
       const n=selIds.size;
       [...selIds].forEach(id=>{ lotes=lotes.filter(l=>l.id!==id); });
@@ -1718,13 +1782,27 @@ const HINTS={
 };
 function setMode(m){
   mode=m;
-  if(m!=='edit'){ selId=null; selIds.clear(); }
-  if(m!=='create'){ lotConfig=null; }
-  document.getElementById('btn-criar').classList.toggle('on',m==='create');
+  if(m!=='edit'){ selId=null; selIds.clear(); selRuaId=null; }
+  if(m!=='create'){ lotConfig=null; if(!ruaConfig) document.getElementById('btn-rua').classList.remove('on'); }
+  document.getElementById('btn-criar').classList.toggle('on',m==='create'&&!ruaConfig);
   document.getElementById('btn-e').classList.toggle('on',m==='edit');
   document.getElementById('btn-v').classList.toggle('on',m==='view');
   document.getElementById('mw').className='c-'+(m==='create'?'draw':m==='edit'?'edit':'view');
   document.getElementById('hint').textContent=HINTS[m]||'';
+  // sidebar visível só em editar/criar; mapa ocupa tela toda em visualizar
+  const sb=document.getElementById('sb');
+  const mw=document.getElementById('mw');
+  const ov=document.getElementById('view-overlay');
+  if(m==='view'){
+    sb.style.display='none';
+    mw.style.right='0';
+    ov.style.display='flex';
+    renderViewFilter();
+  } else {
+    sb.style.display='flex';
+    mw.style.right='var(--sb)';
+    ov.style.display='none';
+  }
   render(); renderSB();
 }
 
@@ -1790,6 +1868,187 @@ function atualizarStats(){
 }
 
 // ════════════════════════════════════════════════════════════════
+//  RUAS (STREET LABELS)
+// ════════════════════════════════════════════════════════════════
+function renderRuasNoSVG(svg){
+  // defs para filtro de sombra (uma vez por render)
+  const gR=mk('g');
+  ruas.forEach(r=>{
+    const g=mk('g');
+    const isSel=selRuaId===r.id&&mode==='edit';
+    const fs=r.fontSize||16;
+    const estimH=fs+8;
+
+    // grupo rotacionado em torno do centro da rua
+    const grp=at(mk('g'),{transform:`rotate(${r.angle||0},${r.x},${r.y})`});
+
+    // texto com sombra para contraste, sem fundo
+    const t=at(mk('text'),{
+      x:r.x, y:r.y+0.5,
+      'text-anchor':'middle','dominant-baseline':'middle',
+      'font-family':'Arial,sans-serif',
+      'font-size':fs,'font-weight':'400',
+      'letter-spacing':'0.05em',
+      fill:r.cor||'#ffffff',
+      stroke: isSel ? 'rgba(79,156,249,.7)' : 'none',
+      'stroke-width': '0.5',
+      'paint-order':'stroke',
+      'pointer-events': mode==='edit' ? 'all' : 'none',
+      style:'cursor:'+(mode==='edit'?'move':'default'),
+    });
+    t.textContent=r.nome;
+
+    if(mode==='edit'){
+      t.addEventListener('mousedown',e=>{
+        if(e.button!==0) return;
+        e.stopPropagation(); e.preventDefault();
+        selRuaId=r.id; selId=null; selIds.clear();
+        render(); renderSBRua(r);
+        const sm=svgPt(e), ox=r.x, oy=r.y;
+        const mm=ev=>{const c=svgPt(ev);r.x=ox+c.x-sm.x;r.y=oy+c.y-sm.y;render();};
+        const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);salvarStorage();};
+        window.addEventListener('mousemove',mm);window.addEventListener('mouseup',mu);
+      });
+    }
+
+    grp.appendChild(t);
+    g.appendChild(grp);
+
+    // alça de rotação (fora do grupo rotado, em coordenadas do canvas)
+    if(isSel){
+      const hy=r.y-estimH/2-24;
+      const ln=at(mk('line'),{
+        x1:r.x,y1:r.y-estimH/2,x2:r.x,y2:hy+8,
+        stroke:'rgba(79,156,249,.45)','stroke-width':'1','stroke-dasharray':'4 3','pointer-events':'none'
+      });
+      const rh=at(mk('circle'),{
+        cx:r.x,cy:hy,r:'8',
+        fill:'#fff',stroke:'#4f9cf9','stroke-width':'2','pointer-events':'all',style:'cursor:grab'
+      });
+      rh.addEventListener('mousedown',e=>{
+        e.stopPropagation();e.preventDefault();
+        const sm=svgPt(e);
+        const initA=Math.atan2(sm.y-r.y,sm.x-r.x)*180/Math.PI, initL=r.angle||0;
+        const mm=ev=>{const c=svgPt(ev);r.angle=initL+(Math.atan2(c.y-r.y,c.x-r.x)*180/Math.PI-initA);render();};
+        const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);salvarStorage();};
+        window.addEventListener('mousemove',mm);window.addEventListener('mouseup',mu);
+      });
+      g.appendChild(ln);g.appendChild(rh);
+    }
+
+    gR.appendChild(g);
+  });
+  svg.appendChild(gR);
+}
+
+function iniciarRua(){
+  document.getElementById('rua-bg').style.display='flex';
+  setTimeout(()=>document.getElementById('rua-nome').focus(),60);
+}
+function cancelarRua(){ document.getElementById('rua-bg').style.display='none'; ruaConfig=null; }
+function confirmarRua(){
+  const nome=(document.getElementById('rua-nome').value||'').trim();
+  if(!nome){notif('Digite o nome da rua','err');return;}
+  ruaConfig={
+    nome,
+    fontSize:parseInt(document.getElementById('rua-fs').value)||16,
+    cor:document.getElementById('rua-cor').value||'#ffffff',
+  };
+  document.getElementById('rua-bg').style.display='none';
+  setMode('edit'); // garante modo válido antes de criar
+  setMode('create');
+  document.getElementById('hint').textContent='Clique no mapa para posicionar a rua — Esc para cancelar';
+  document.getElementById('btn-rua').classList.add('on');
+  notif('Clique no mapa para colocar o nome da rua','inf');
+}
+function placeRua(x,y){
+  if(!ruaConfig) return;
+  const r={id:'r'+(nextRuaId++),nome:ruaConfig.nome,x,y,angle:0,fontSize:ruaConfig.fontSize,cor:ruaConfig.cor};
+  ruas.push(r); ruaConfig=null;
+  selRuaId=r.id; selId=null; selIds.clear();
+  document.getElementById('btn-rua').classList.remove('on');
+  mode='edit';
+  document.getElementById('btn-e').classList.add('on');
+  document.getElementById('btn-v').classList.remove('on');
+  document.getElementById('mw').className='c-edit';
+  document.getElementById('hint').textContent='Arraste a rua para reposicionar · alça azul para rotacionar · Del para apagar';
+  salvarStorage(); render(); renderSBRua(r);
+  notif('Rua adicionada!','ok');
+}
+function renderSBRua(r){
+  const title=document.getElementById('sbt'), cnt=document.getElementById('sbc'), body=document.getElementById('sbb');
+  title.textContent='Rua'; cnt.textContent='';
+  body.innerHTML=`
+    <div class="fg"><label class="fl">Nome</label>
+      <input class="fi" id="rs-nome" type="text" value="${r.nome.replace(/"/g,'&quot;')}"
+        oninput="liveUpdRua('${r.id}','nome',this.value)"/></div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Tamanho (px)</label>
+        <input class="fi" id="rs-fs" type="number" min="8" max="72" value="${r.fontSize||16}"
+          oninput="liveUpdRua('${r.id}','fontSize',+this.value)"/></div>
+      <div class="fg"><label class="fl">Cor</label>
+        <input class="fi" id="rs-cor" type="color" value="${r.cor||'#ffffff'}"
+          style="height:38px;padding:3px 6px;cursor:pointer"
+          oninput="liveUpdRua('${r.id}','cor',this.value)"/></div>
+    </div>
+    <div class="fg"><label class="fl">Ângulo °</label>
+      <input class="fi" id="rs-ang" type="number" step="1" value="${+(r.angle||0).toFixed(1)}"
+        oninput="liveUpdRua('${r.id}','angle',+this.value)"/></div>
+    <div class="div"></div>
+    <div class="br2">
+      <button class="btn btn-d" onclick="deletarRua('${r.id}')">🗑 Deletar</button>
+      <button class="btn btn-g" onclick="selRuaId=null;render();renderSB()">← Lista</button>
+    </div>
+    <div class="hbox" style="font-size:10px;margin-top:10px">
+      <b>Mover:</b> arraste o texto<br>
+      <b>Rotacionar:</b> alça azul acima<br>
+      <kbd style="background:var(--s3);padding:1px 5px;border-radius:3px;font-size:9px">Del</kbd> para apagar
+    </div>`;
+}
+function liveUpdRua(id,prop,val){
+  const r=ruas.find(x=>x.id===id); if(!r) return;
+  r[prop]=val; render();
+}
+function deletarRua(id){
+  ruas=ruas.filter(r=>r.id!==id);
+  if(selRuaId===id) selRuaId=null;
+  salvarStorage(); render(); renderSB();
+  notif('Rua removida.','ok');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  VIEW FILTER
+// ════════════════════════════════════════════════════════════════
+function toggleFilter(status){
+  if(filterStatus.has(status)){
+    if(filterStatus.size>1) filterStatus.delete(status);
+  } else {
+    filterStatus.add(status);
+  }
+  render(); renderViewFilter();
+}
+function toggleFilterAll(){
+  filterStatus=new Set(['disponivel','vendido','reservado']);
+  render(); renderViewFilter();
+}
+function renderViewFilter(){
+  const ov=document.getElementById('view-overlay'); if(!ov) return;
+  const isAll=filterStatus.size===3;
+  ov.innerHTML=`
+    <button class="vf-f ${filterStatus.has('disponivel')?'on-d':''}" onclick="toggleFilter('disponivel')">
+      <span class="vf-dot" style="background:#22c55e"></span>Disponível
+    </button>
+    <button class="vf-f ${filterStatus.has('vendido')?'on-v':''}" onclick="toggleFilter('vendido')">
+      <span class="vf-dot" style="background:#ef4444"></span>Vendido
+    </button>
+    <button class="vf-f ${filterStatus.has('reservado')?'on-r':''}" onclick="toggleFilter('reservado')">
+      <span class="vf-dot" style="background:#f59e0b"></span>Reservado
+    </button>
+    <div class="vf-sep"></div>
+    <button class="vf-all ${isAll?'on':''}" onclick="toggleFilterAll()">Todos</button>`;
+}
+
+// ════════════════════════════════════════════════════════════════
 //  MULTI-PROJECT MANAGEMENT
 // ════════════════════════════════════════════════════════════════
 function _genId(){ return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -1798,7 +2057,7 @@ function _salvarLista(list){ try{localStorage.setItem('lot_projects',JSON.string
 
 function salvarStorage(){
   if(!projId) projId=_genId();
-  try{localStorage.setItem('lot_proj_'+projId,JSON.stringify({lotes,nextId,scaleMeds}));}catch(e){}
+  try{localStorage.setItem('lot_proj_'+projId,JSON.stringify({lotes,nextId,scaleMeds,ruas,nextRuaId}));}catch(e){}
   const list=_listarProjetos(), idx=list.findIndex(p=>p.id===projId);
   const meta={id:projId,name:projName||'Sem nome',updatedAt:Date.now(),lotCount:lotes.length};
   if(idx>=0) list[idx]=meta; else list.push(meta);
@@ -1811,7 +2070,7 @@ function carregarProjeto(id){
   const list=_listarProjetos(), meta=list.find(p=>p.id===id); if(!meta) return false;
   let data; try{data=JSON.parse(localStorage.getItem('lot_proj_'+id)||'null');}catch(e){return false;}
   if(!data) return false;
-  lotes=data.lotes||[]; nextId=data.nextId||1; scaleMeds=data.scaleMeds||[];
+  lotes=data.lotes||[]; nextId=data.nextId||1; scaleMeds=data.scaleMeds||[]; ruas=data.ruas||[]; nextRuaId=data.nextRuaId||1;
   projId=id; projName=meta.name;
   const bg=localStorage.getItem('lot_proj_bg_'+id)||'';
   if(bg){ try{localStorage.setItem('lot_bg',bg);}catch(e){} aplicarImg(bg); }
@@ -1981,7 +2240,7 @@ function notif(msg,type='ok'){
 }
 function limparTudo(){
   if(!confirm('Remover todos os lotes do loteamento atual?')) return;
-  lotes=[]; nextId=1; selId=null; selIds.clear();
+  lotes=[]; nextId=1; ruas=[]; nextRuaId=1; selId=null; selIds.clear(); selRuaId=null;
   salvarStorage();
   render(); renderSB(); notif('Todos os lotes removidos.','ok');
 }
